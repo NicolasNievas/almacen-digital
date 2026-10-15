@@ -1,0 +1,89 @@
+{
+  "store": {
+    "name": "Almacén del Barrio",
+    "whatsapp": "5493517896064",
+    "alias": "almacen.barrio.mp",
+    "cbu": "0000000000000000000000",
+    "titular": "Nombre del Titular"
+  },
+  "categories": [
+    { "id": "almacen", "name": "Almacén" },
+    { "id": "bebidas", "name": "Bebidas" },
+    { "id": "fiambreria", "name": "Fiambrería" },
+    { "id": "promos", "name": "Promociones" }
+  ],
+  "products": [
+    {
+      "id": "p-huevos-maple",
+      "name": "Maple de Huevos (30 un.)",
+      "category_id": "almacen",
+      "unit_price": 5000,
+      "pricing_type": "TIERED",
+      "pricing_tiers": [
+        { "min_quantity": 1, "unit_price": 5000 },
+        { "min_quantity": 2, "unit_price": 4500 }
+      ],
+      "stock": 14,
+      "active": true,
+      "tags": ["OFERTA"],
+      "image_url": "/img/maple.jpg"
+    },
+    {
+      "id": "p-fernet-750",
+      "name": "Fernet Branca 750ml",
+      "category_id": "bebidas",
+      "unit_price": 18000,
+      "pricing_type": "TIERED",
+      "pricing_tiers": [
+        { "min_quantity": 1, "unit_price": 18000 },
+        { "min_quantity": 6, "unit_price": 10000 }
+      ],
+      "stock": 24,
+      "active": true,
+      "tags": ["OFERTA"],
+      "image_url": "/img/fernet.jpg"
+    },
+    {
+      "id": "p-fideos-spaghetti",
+      "name": "Fideos Spaghetti 500g",
+      "category_id": "almacen",
+      "unit_price": 1800,
+      "pricing_type": "TIERED",
+      "pricing_tiers": [
+        { "min_quantity": 1, "unit_price": 1800 },
+        { "min_quantity": 5, "unit_price": 1500 },
+        { "min_quantity": 10, "unit_price": 1350 }
+      ],
+      "stock": 60,
+      "active": true,
+      "tags": ["OFERTA"],
+      "image_url": "/img/fideos.jpg"
+    },
+    {
+      "id": "p-yerba-1kg",
+      "name": "Yerba Mate 1kg",
+      "category_id": "almacen",
+      "unit_price": 6500,
+      "pricing_type": "BUNDLE",
+      "bundle_size": 2,
+      "bundle_price": 11500,
+      "pricing_tiers": [],
+      "stock": 4,
+      "active": true,
+      "tags": ["COMBO"],
+      "image_url": "/img/yerba.jpg"
+    },
+    {
+      "id": "p-jamon-cocido",
+      "name": "Jamón Cocido (100g)",
+      "category_id": "fiambreria",
+      "unit_price": 1900,
+      "pricing_type": "SIMPLE",
+      "pricing_tiers": [],
+      "stock": 0,
+      "active": true,
+      "tags": [],
+      "image_url": "/img/jamon.jpg"
+    }
+  ]
+}

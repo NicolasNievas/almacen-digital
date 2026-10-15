@@ -1,0 +1,190 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { CheckCircle2, Minus, Plus, Search, ShoppingCart, Trash2 } from "lucide-react";
+import type { CartLine, Product } from "@/lib/types";
+import { calcSubtotal, formatARS } from "@/lib/pricing";
+
+type Props = {
+  products: Product[];
+  // Fase 2: conectar al RPC `create_sale` de Supabase.
+  onCheckout?: (lines: CartLine[], customer: string, payment: string) => Promise<void> | void;
+};
+
+const PAYMENTS = ["Efectivo", "Transferencia", "Débito", "Crédito"] as const;
+
+export default function PosScreen({ products, onCheckout }: Props) {
+  const [catalog, setCatalog] = useState(products);
+  const [query, setQuery] = useState("");
+  const [lines, setLines] = useState<CartLine[]>([]);
+  const [customer, setCustomer] = useState("");
+  const [payment, setPayment] = useState<string>(PAYMENTS[0]);
+  const [message, setMessage] = useState<string | null>(null);
+  const [processing, setProcessing] = useState(false);
+
+  const available = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return catalog
+      .filter((p) => p.active)
+      .filter((p) => !q || p.name.toLowerCase().includes(q) || p.tags.some((t) => t.toLowerCase().includes(q)));
+  }, [catalog, query]);
+
+  const total = useMemo(() => lines.reduce((a, l) => a + calcSubtotal(l.product, l.quantity), 0), [lines]);
+
+  const add = (product: Product) => {
+    setMessage(null);
+    setLines((prev) => {
+      const existing = prev.find((l) => l.product.id === product.id);
+      if (!existing) return [...prev, { product, quantity: 1 }];
+      if (existing.quantity + 1 > product.stock) return prev;
+      return prev.map((l) => (l.product.id === product.id ? { ...l, quantity: l.quantity + 1 } : l));
+    });
+  };
+
+  const changeQty = (productId: string, quantity: number) => {
+    setLines((prev) =>
+      quantity <= 0
+        ? prev.filter((l) => l.product.id !== productId)
+        : prev.map((l) => (l.product.id === productId ? { ...l, quantity } : l)),
+    );
+  };
+
+  const confirm = async () => {
+    if (lines.length === 0) return;
+    setProcessing(true);
+    setMessage(null);
+    try {
+      await onCheckout?.(lines, customer.trim(), payment);
+      // Fase 1: descuento local de stock para simular la venta.
+      setCatalog((prev) =>
+        prev.map((p) => {
+          const line = lines.find((l) => l.product.id === p.id);
+          return line ? { ...p, stock: Math.max(0, p.stock - line.quantity) } : p;
+        }),
+      );
+      setLines([]);
+      setCustomer("");
+      setMessage("Venta registrada correctamente.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "No se pudo registrar la venta.");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
+      <section className="space-y-3">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Buscar producto para vender..."
+            className="w-full rounded-lg border border-neutral-300 bg-white py-2.5 pl-9 pr-3 text-sm text-neutral-900 outline-none focus:border-green-600"
+          />
+        </div>
+
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+          {available.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              disabled={p.stock <= 0}
+              onClick={() => add(p)}
+              className="flex flex-col items-start rounded-lg border border-neutral-200 bg-white p-3 text-left transition-colors hover:border-green-500 disabled:opacity-40"
+            >
+              <span className="line-clamp-2 text-sm font-medium text-neutral-900">{p.name}</span>
+              <span className="mt-1 text-sm font-bold text-neutral-900">{formatARS(p.unit_price)}</span>
+              <span className="text-xs text-neutral-400">Stock: {p.stock}</span>
+            </button>
+          ))}
+          {available.length === 0 && <p className="text-sm text-neutral-500">Sin resultados.</p>}
+        </div>
+      </section>
+
+      <aside className="flex h-fit flex-col gap-3 rounded-xl border border-neutral-200 bg-white p-4">
+        <h2 className="flex items-center gap-2 text-base font-semibold text-neutral-900">
+          <ShoppingCart size={18} /> Ticket
+        </h2>
+
+        <div className="max-h-72 space-y-2 overflow-y-auto">
+          {lines.length === 0 && <p className="text-sm text-neutral-500">Agregá productos para vender.</p>}
+          {lines.map((l) => (
+            <div key={l.product.id} className="rounded-lg border border-neutral-200 p-2">
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-sm font-medium text-neutral-900">{l.product.name}</span>
+                <button
+                  type="button"
+                  onClick={() => changeQty(l.product.id, 0)}
+                  className="text-neutral-400 hover:text-red-600"
+                  aria-label="Quitar"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+              <div className="mt-1 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="rounded border border-neutral-300 p-1"
+                    onClick={() => changeQty(l.product.id, l.quantity - 1)}
+                  >
+                    <Minus size={14} />
+                  </button>
+                  <span className="w-6 text-center text-sm">{l.quantity}</span>
+                  <button
+                    type="button"
+                    disabled={l.quantity >= l.product.stock}
+                    className="rounded border border-neutral-300 p-1 disabled:opacity-30"
+                    onClick={() => changeQty(l.product.id, l.quantity + 1)}
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
+                <span className="text-sm font-semibold text-neutral-900">
+                  {formatARS(calcSubtotal(l.product, l.quantity))}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <input
+          value={customer}
+          onChange={(e) => setCustomer(e.target.value)}
+          placeholder="Cliente (opcional)"
+          className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-green-600"
+        />
+
+        <select
+          value={payment}
+          onChange={(e) => setPayment(e.target.value)}
+          className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-green-600"
+        >
+          {PAYMENTS.map((p) => (
+            <option key={p} value={p}>
+              {p}
+            </option>
+          ))}
+        </select>
+
+        <div className="flex justify-between text-lg font-bold text-neutral-900">
+          <span>Total</span>
+          <span>{formatARS(total)}</span>
+        </div>
+
+        <button
+          type="button"
+          disabled={lines.length === 0 || processing}
+          onClick={confirm}
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-green-600 py-2.5 font-semibold text-white hover:bg-green-700 disabled:opacity-40"
+        >
+          <CheckCircle2 size={18} /> {processing ? "Procesando..." : "Confirmar venta"}
+        </button>
+
+        {message && <p className="rounded bg-neutral-100 p-2 text-xs text-neutral-700">{message}</p>}
+      </aside>
+    </div>
+  );
+}
