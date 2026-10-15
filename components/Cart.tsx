@@ -20,7 +20,8 @@ export default function Cart({ open, onClose, lines, onChangeQty, store }: Props
 
   const total = useMemo(() => lines.reduce((a, l) => a + calcSubtotal(l.product, l.quantity), 0), [lines]);
   const savings = useMemo(() => lines.reduce((a, l) => a + calcSavings(l.product, l.quantity), 0), [lines]);
-  const canSend = lines.length > 0 && name.trim() && pickupTime.trim();
+  const canSend =
+    lines.length > 0 && name.trim().length > 0 && /^\d{2}:\d{2}(:\d{2})?$/.test(pickupTime);
 
   // Verifica stock antes de incrementar
   const increment = (l: CartLine) => {
@@ -69,7 +70,16 @@ export default function Cart({ open, onClose, lines, onChangeQty, store }: Props
         <footer className="space-y-3 border-t p-4">
           {savings > 0 && <p className="text-sm text-green-700">Ahorrás {formatARS(savings)} con las promos</p>}
           <input className="w-full rounded border p-2" placeholder="Tu nombre *" value={name} onChange={(e) => setName(e.target.value)} />
-          <input className="w-full rounded border p-2" placeholder="Horario de retiro (ej. 18:30) *" value={pickupTime} onChange={(e) => setPickupTime(e.target.value)} />
+          <label className="block space-y-1">
+            <span className="text-xs text-neutral-500">Horario de retiro *</span>
+            <input
+              type="time"
+              required
+              className="w-full rounded border p-2"
+              value={pickupTime}
+              onChange={(e) => setPickupTime(e.target.value)}
+            />
+          </label>
           <select className="w-full rounded border p-2" value={payment} onChange={(e) => setPayment(e.target.value as Checkout["payment"])}>
             <option>Efectivo</option>
             <option>Transferencia al retirar</option>

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { ClipboardList, LayoutDashboard, Package, ShoppingCart } from "lucide-react";
+import SignOutButton from "@/components/admin/SignOutButton";
 
 const nav = [
   { href: "/admin", label: "Métricas", icon: LayoutDashboard },
@@ -15,9 +16,12 @@ export default function PanelLayout({ children }: { children: ReactNode }) {
       <header className="border-b border-neutral-200 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
           <span className="font-bold text-neutral-900">Panel · Almacén</span>
-          <Link href="/" className="text-sm text-neutral-500 hover:text-neutral-900">
-            Ver tienda
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link href="/" className="text-sm text-neutral-500 hover:text-neutral-900">
+              Ver tienda
+            </Link>
+            <SignOutButton />
+          </div>
         </div>
         <nav className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4">
           {nav.map((item) => (

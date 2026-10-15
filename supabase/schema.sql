@@ -142,3 +142,14 @@ create view top_products with (security_invoker = true) as
 select p.name, sum(oi.quantity) as units_sold
 from order_items oi join products p on p.id = oi.product_id
 group by p.name order by units_sold desc limit 10;
+
+-- ============ GRANTS (Supabase) ============
+-- Lectura pública del catálogo.
+grant usage on schema public to anon, authenticated;
+grant select on categories, products to anon;
+-- Escritura del panel admin (RLS exige is_admin()).
+grant select, insert, update, delete on categories, products to authenticated;
+grant select on orders, order_items, stock_logs to authenticated;
+grant select on sales_metrics, top_products to authenticated;
+-- RPCs.
+grant execute on function adjust_stock to authenticated;
