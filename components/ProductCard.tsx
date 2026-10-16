@@ -30,8 +30,8 @@ export default function ProductCard({ product, quantityInCart = 0, onAdd }: Prop
   }
 
   return (
-    <article className="flex flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
-      <div className="relative flex aspect-[4/3] items-center justify-center bg-neutral-100">
+    <article className="flex flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+      <div className="relative flex aspect-[4/3] items-center justify-center bg-neutral-100 dark:bg-neutral-800">
         {product.image_url && !imageError ? (
           <Image
             src={product.image_url}
@@ -42,7 +42,7 @@ export default function ProductCard({ product, quantityInCart = 0, onAdd }: Prop
             onError={() => setImageError(true)}
           />
         ) : (
-          <Package className="h-10 w-10 text-neutral-400" />
+          <Package className="h-10 w-10 text-neutral-400 dark:text-neutral-500" />
         )}
         {product.tags.length > 0 && (
           <div className="absolute left-2 top-2 flex flex-wrap gap-1">
@@ -59,17 +59,17 @@ export default function ProductCard({ product, quantityInCart = 0, onAdd }: Prop
       </div>
 
       <div className="flex flex-1 flex-col gap-2 p-3">
-        <h3 className="line-clamp-2 font-medium text-neutral-900">{product.name}</h3>
-        <p className="text-lg font-bold text-neutral-900">{formatARS(product.unit_price)}</p>
-        {promo && <p className="text-xs font-medium text-green-700">{promo}</p>}
+        <h3 className="line-clamp-2 font-medium text-neutral-900 dark:text-neutral-100">{product.name}</h3>
+        <p className="text-lg font-bold text-neutral-900 dark:text-neutral-100">{formatARS(product.unit_price)}</p>
+        {promo && <p className="text-xs font-medium text-green-700 dark:text-green-400">{promo}</p>}
 
         <div className="mt-auto flex items-center justify-between gap-2 pt-2">
           {outOfStock ? (
-            <span className="text-xs font-semibold text-red-600">Agotado</span>
+            <span className="text-xs font-semibold text-red-600 dark:text-red-400">Agotado</span>
           ) : lowStock ? (
-            <span className="text-xs font-semibold text-amber-600">Últimas {product.stock} un.</span>
+            <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">Últimas {product.stock} un.</span>
           ) : (
-            <span className="text-xs text-neutral-400">Stock: {product.stock}</span>
+            <span className="text-xs text-neutral-400 dark:text-neutral-500">Stock: {product.stock}</span>
           )}
           <button
             type="button"

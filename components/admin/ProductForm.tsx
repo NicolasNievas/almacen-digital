@@ -1,235 +1,355 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
-import { Plus, Save, Trash2 } from "lucide-react";
-import type { Category, PricingTier, PricingType, Product } from "@/lib/types";
-
-export type ProductInput = Omit<Product, "id"> & { id?: string };
+import { useRef, useState, type FormEvent } from "react";
+import Image from "next/image";
+import { ImagePlus, Loader2, Package, Plus, Trash2, X } from "lucide-react";
+import { isCloudinaryConfigured, uploadImage } from "@/lib/cloudinary";
+import { createProduct, updateProduct } from "@/lib/supabase/queries";
+import type { Category, PricingTier, PricingType, Product, ProductInput } from "@/lib/types";
 
 type Props = {
+  product?: Product | null;
   categories: Category[];
-  initial?: Product;
-  onSubmit: (data: ProductInput) => Promise<void> | void;
-  onCancel?: () => void;
+  onClose: () => void;
+  onSaved: () => void;
 };
 
-const newTier = (): PricingTier => ({ min_quantity: 1, unit_price: 0 });
+type TierRow = { min_quantity: string; unit_price: string };
 
-export default function ProductForm({ categories, initial, onSubmit, onCancel }: Props) {
-  const [name, setName] = useState(initial?.name ?? "");
-  const [categoryId, setCategoryId] = useState(initial?.category_id ?? categories[0]?.id ?? "");
-  const [unitPrice, setUnitPrice] = useState(initial?.unit_price ?? 0);
-  const [pricingType, setPricingType] = useState<PricingType>(initial?.pricing_type ?? "SIMPLE");
-  const [tiers, setTiers] = useState<PricingTier[]>(initial?.pricing_tiers ?? []);
-  const [bundleSize, setBundleSize] = useState(initial?.bundle_size ?? 2);
-  const [bundlePrice, setBundlePrice] = useState(initial?.bundle_price ?? 0);
-  const [stock, setStock] = useState(initial?.stock ?? 0);
-  const [tags, setTags] = useState((initial?.tags ?? []).join(", "));
-  const [imageUrl, setImageUrl] = useState(initial?.image_url ?? "");
-  const [active, setActive] = useState(initial?.active ?? true);
+const EMPTY: ProductInput = {
+  name: "",
+  category_id: "",
+  unit_price: 0,
+  pricing_type: "SIMPLE",
+  pricing_tiers: [],
+  bundle_size: null,
+  bundle_price: null,
+  stock: 0,
+  active: true,
+  tags: [],
+  image_url: null,
+};
+
+export default function ProductForm({ product, categories, onClose, onSaved }: Props) {
+  const editing = Boolean(product);
+  const [form, setForm] = useState<ProductInput>(() =>
+    product
+      ? {
+          name: product.name,
+          category_id: product.category_id,
+          unit_price: product.unit_price,
+          pricing_type: product.pricing_type,
+          pricing_tiers: product.pricing_tiers,
+          bundle_size: product.bundle_size ?? null,
+          bundle_price: product.bundle_price ?? null,
+          stock: product.stock,
+          active: product.active,
+          tags: product.tags,
+          image_url: product.image_url ?? null,
+        }
+      : { ...EMPTY, category_id: categories[0]?.id ?? "" },
+  );
+  const [tiers, setTiers] = useState<TierRow[]>(() =>
+    (product?.pricing_tiers ?? []).map((t) => ({
+      min_quantity: String(t.min_quantity),
+      unit_price: String(t.unit_price),
+    })),
+  );
+  const [tagsText, setTagsText] = useState((product?.tags ?? []).join(", "));
+  const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
-  const updateTier = (index: number, patch: Partial<PricingTier>) => {
-    setTiers((prev) => prev.map((t, i) => (i === index ? { ...t, ...patch } : t)));
+  const set = <K extends keyof ProductInput>(key: K, value: ProductInput[K]) =>
+    setForm((prev) => ({ ...prev, [key]: value }));
+
+  const handleFile = async (file: File | undefined) => {
+    if (!file) return;
+    setError(null);
+    setUploading(true);
+    try {
+      set("image_url", await uploadImage(file));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo subir la imagen.");
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    setError(null);
+
+    if (!form.name.trim()) return setError("El nombre es obligatorio.");
+    if (!form.category_id) return setError("Elegí una categoría.");
+    if (form.unit_price < 0) return setError("El precio no puede ser negativo.");
+
+    const pricing_tiers: PricingTier[] =
+      form.pricing_type === "TIERED"
+        ? tiers
+            .map((t) => ({ min_quantity: Number(t.min_quantity), unit_price: Number(t.unit_price) }))
+            .filter((t) => t.min_quantity > 0 && t.unit_price >= 0)
+        : [];
+
+    const payload: ProductInput = {
+      ...form,
+      name: form.name.trim(),
+      pricing_tiers,
+      bundle_size: form.pricing_type === "BUNDLE" ? form.bundle_size : null,
+      bundle_price: form.pricing_type === "BUNDLE" ? form.bundle_price : null,
+      tags: tagsText
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean),
+      image_url: form.image_url || null,
+    };
+
     setSaving(true);
     try {
-      await onSubmit({
-        id: initial?.id,
-        name: name.trim(),
-        category_id: categoryId,
-        unit_price: Number(unitPrice) || 0,
-        pricing_type: pricingType,
-        pricing_tiers: pricingType === "TIERED" ? tiers : [],
-        bundle_size: pricingType === "BUNDLE" ? Number(bundleSize) || undefined : undefined,
-        bundle_price: pricingType === "BUNDLE" ? Number(bundlePrice) || undefined : undefined,
-        stock: Math.max(0, Number(stock) || 0),
-        active,
-        tags: tags
-          .split(",")
-          .map((t) => t.trim())
-          .filter(Boolean),
-        image_url: imageUrl.trim() || undefined,
-      });
+      if (product) await updateProduct(product.id, payload);
+      else await createProduct(payload);
+      onSaved();
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo guardar el producto.");
     } finally {
       setSaving(false);
     }
   };
 
   const inputClass =
-    "w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-green-600";
-  const labelClass = "block text-xs font-medium text-neutral-600";
+    "w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-green-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100";
+  const labelClass = "block space-y-1 text-xs font-medium text-neutral-600 dark:text-neutral-400";
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-neutral-200 bg-white p-4">
-      <h3 className="text-base font-semibold text-neutral-900">
-        {initial ? "Editar producto" : "Nuevo producto"}
-      </h3>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="space-y-1">
-          <span className={labelClass}>Nombre *</span>
-          <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} required />
-        </label>
-
-        <label className="space-y-1">
-          <span className={labelClass}>Categoría</span>
-          <select className={inputClass} value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="space-y-1">
-          <span className={labelClass}>Precio unitario</span>
-          <input
-            type="number"
-            min={0}
-            className={inputClass}
-            value={unitPrice}
-            onChange={(e) => setUnitPrice(Number(e.target.value))}
-          />
-        </label>
-
-        <label className="space-y-1">
-          <span className={labelClass}>Stock (unidades base)</span>
-          <input
-            type="number"
-            min={0}
-            className={inputClass}
-            value={stock}
-            onChange={(e) => setStock(Number(e.target.value))}
-          />
-        </label>
-
-        <label className="space-y-1">
-          <span className={labelClass}>Tipo de precio</span>
-          <select
-            className={inputClass}
-            value={pricingType}
-            onChange={(e) => setPricingType(e.target.value as PricingType)}
-          >
-            <option value="SIMPLE">Simple</option>
-            <option value="TIERED">Por escalones (TIERED)</option>
-            <option value="BUNDLE">Combo (BUNDLE)</option>
-          </select>
-        </label>
-
-        <label className="space-y-1">
-          <span className={labelClass}>Etiquetas (separadas por coma)</span>
-          <input
-            className={inputClass}
-            value={tags}
-            onChange={(e) => setTags(e.target.value)}
-            placeholder="OFERTA, COMBO"
-          />
-        </label>
-
-        <label className="space-y-1 sm:col-span-2">
-          <span className={labelClass}>URL de imagen</span>
-          <input
-            className={inputClass}
-            value={imageUrl}
-            onChange={(e) => setImageUrl(e.target.value)}
-            placeholder="/img/producto.jpg"
-          />
-        </label>
-      </div>
-
-      {pricingType === "TIERED" && (
-        <div className="space-y-2 rounded-lg bg-neutral-50 p-3">
-          <span className={labelClass}>Escalones (cantidad mínima → precio unitario)</span>
-          {tiers.map((tier, index) => (
-            <div key={index} className="flex items-center gap-2">
-              <input
-                type="number"
-                min={1}
-                className={inputClass}
-                value={tier.min_quantity}
-                onChange={(e) => updateTier(index, { min_quantity: Number(e.target.value) })}
-              />
-              <input
-                type="number"
-                min={0}
-                className={inputClass}
-                value={tier.unit_price}
-                onChange={(e) => updateTier(index, { unit_price: Number(e.target.value) })}
-              />
-              <button
-                type="button"
-                onClick={() => setTiers((prev) => prev.filter((_, i) => i !== index))}
-                className="rounded-lg border border-neutral-300 p-2 text-neutral-500 hover:text-red-600"
-                aria-label="Quitar escalón"
-              >
-                <Trash2 size={16} />
-              </button>
-            </div>
-          ))}
-          <button
-            type="button"
-            onClick={() => setTiers((prev) => [...prev, newTier()])}
-            className="flex items-center gap-1 text-sm font-medium text-green-700"
-          >
-            <Plus size={16} /> Agregar escalón
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4">
+      <form
+        onSubmit={handleSubmit}
+        className="my-6 w-full max-w-2xl space-y-4 rounded-xl border border-neutral-200 bg-white p-5 shadow-lg dark:border-neutral-800 dark:bg-neutral-900"
+      >
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-100">
+            {editing ? "Editar producto" : "Nuevo producto"}
+          </h2>
+          <button type="button" onClick={onClose} aria-label="Cerrar" className="text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200">
+            <X size={20} />
           </button>
         </div>
-      )}
 
-      {pricingType === "BUNDLE" && (
-        <div className="grid gap-4 rounded-lg bg-neutral-50 p-3 sm:grid-cols-2">
-          <label className="space-y-1">
-            <span className={labelClass}>Unidades del combo</span>
+        {error && <p className="rounded bg-red-50 p-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">{error}</p>}
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className={labelClass}>
+            Nombre *
+            <input className={inputClass} value={form.name} onChange={(e) => set("name", e.target.value)} required />
+          </label>
+          <label className={labelClass}>
+            Categoría *
+            <select className={inputClass} value={form.category_id} onChange={(e) => set("category_id", e.target.value)} required>
+              <option value="">Seleccionar…</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className={labelClass}>
+            Precio base *
             <input
               type="number"
-              min={2}
+              min={0}
+              step="0.01"
               className={inputClass}
-              value={bundleSize}
-              onChange={(e) => setBundleSize(Number(e.target.value))}
+              value={form.unit_price}
+              onChange={(e) => set("unit_price", Number(e.target.value))}
             />
           </label>
-          <label className="space-y-1">
-            <span className={labelClass}>Precio del combo</span>
+          <label className={labelClass}>
+            Stock (unidades) *
             <input
               type="number"
               min={0}
               className={inputClass}
-              value={bundlePrice}
-              onChange={(e) => setBundlePrice(Number(e.target.value))}
+              value={form.stock}
+              onChange={(e) => set("stock", Math.max(0, Number(e.target.value)))}
+            />
+          </label>
+
+          <label className={labelClass}>
+            Tipo de descuento
+            <select
+              className={inputClass}
+              value={form.pricing_type}
+              onChange={(e) => set("pricing_type", e.target.value as PricingType)}
+            >
+              <option value="SIMPLE">Simple</option>
+              <option value="TIERED">Escalado (por cantidad)</option>
+              <option value="BUNDLE">Combo / Pack</option>
+            </select>
+          </label>
+
+          <label className={labelClass}>
+            Etiquetas (separadas por coma)
+            <input
+              className={inputClass}
+              value={tagsText}
+              onChange={(e) => setTagsText(e.target.value)}
+              placeholder="oferta, nuevo"
             />
           </label>
         </div>
-      )}
 
-      <label className="flex items-center gap-2 text-sm text-neutral-700">
-        <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
-        Producto activo (visible en la tienda)
-      </label>
+        {form.pricing_type === "TIERED" && (
+          <div className="space-y-2 rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
+            <p className="text-xs font-medium text-neutral-600 dark:text-neutral-400">
+              Escalones (a partir de X unidades, precio unitario)
+            </p>
+            {tiers.map((tier, index) => (
+              <div key={index} className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={1}
+                  placeholder="Cantidad mín."
+                  className={inputClass}
+                  value={tier.min_quantity}
+                  onChange={(e) =>
+                    setTiers((prev) => prev.map((t, i) => (i === index ? { ...t, min_quantity: e.target.value } : t)))
+                  }
+                />
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  placeholder="Precio unitario"
+                  className={inputClass}
+                  value={tier.unit_price}
+                  onChange={(e) =>
+                    setTiers((prev) => prev.map((t, i) => (i === index ? { ...t, unit_price: e.target.value } : t)))
+                  }
+                />
+                <button
+                  type="button"
+                  onClick={() => setTiers((prev) => prev.filter((_, i) => i !== index))}
+                  className="rounded border border-neutral-300 p-2 text-neutral-500 hover:text-red-600 dark:border-neutral-700"
+                  aria-label="Quitar escalón"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => setTiers((prev) => [...prev, { min_quantity: "", unit_price: "" }])}
+              className="flex items-center gap-1 text-sm text-green-700 hover:underline dark:text-green-400"
+            >
+              <Plus size={14} /> Agregar escalón
+            </button>
+          </div>
+        )}
 
-      <div className="flex justify-end gap-2">
-        {onCancel && (
+        {form.pricing_type === "BUNDLE" && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className={labelClass}>
+              Unidades por combo
+              <input
+                type="number"
+                min={1}
+                className={inputClass}
+                value={form.bundle_size ?? ""}
+                onChange={(e) => set("bundle_size", e.target.value ? Number(e.target.value) : null)}
+              />
+            </label>
+            <label className={labelClass}>
+              Precio del combo
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                className={inputClass}
+                value={form.bundle_price ?? ""}
+                onChange={(e) => set("bundle_price", e.target.value ? Number(e.target.value) : null)}
+              />
+            </label>
+          </div>
+        )}
+
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-neutral-600 dark:text-neutral-400">Imagen</p>
+          <div className="flex items-center gap-3">
+            <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-neutral-200 bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800">
+              {form.image_url ? (
+                <Image src={form.image_url} alt="Vista previa" fill sizes="80px" className="object-cover" />
+              ) : (
+                <Package className="h-7 w-7 text-neutral-400" />
+              )}
+            </div>
+            <div className="space-y-1">
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                disabled={uploading}
+                className="flex items-center gap-1.5 rounded-lg border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:text-neutral-900 disabled:opacity-50 dark:border-neutral-700 dark:text-neutral-300 dark:hover:text-white"
+              >
+                {uploading ? <Loader2 size={14} className="animate-spin" /> : <ImagePlus size={14} />}
+                {uploading ? "Subiendo…" : "Subir imagen"}
+              </button>
+              {form.image_url && (
+                <button
+                  type="button"
+                  onClick={() => set("image_url", null)}
+                  className="text-xs text-neutral-500 hover:text-red-600"
+                >
+                  Quitar imagen
+                </button>
+              )}
+              {!isCloudinaryConfigured() && (
+                <p className="text-xs text-amber-600 dark:text-amber-400">
+                  Configurá Cloudinary para habilitar la subida.
+                </p>
+              )}
+            </div>
+          </div>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => void handleFile(e.target.files?.[0])}
+          />
+          <input
+            className={inputClass}
+            placeholder="…o pegá una URL de imagen"
+            value={form.image_url ?? ""}
+            onChange={(e) => set("image_url", e.target.value || null)}
+          />
+        </div>
+
+        <label className="flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300">
+          <input type="checkbox" checked={form.active} onChange={(e) => set("active", e.target.checked)} />
+          Producto activo (visible en la tienda)
+        </label>
+
+        <div className="flex justify-end gap-2 border-t border-neutral-200 pt-4 dark:border-neutral-800">
           <button
             type="button"
-            onClick={onCancel}
-            className="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700"
+            onClick={onClose}
+            className="rounded-lg border border-neutral-300 px-4 py-2 text-sm text-neutral-700 hover:text-neutral-900 dark:border-neutral-700 dark:text-neutral-300 dark:hover:text-white"
           >
             Cancelar
           </button>
-        )}
-        <button
-          type="submit"
-          disabled={saving}
-          className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-40"
-        >
-          <Save size={16} /> {saving ? "Guardando..." : "Guardar"}
-        </button>
-      </div>
-    </form>
+          <button
+            type="submit"
+            disabled={saving || uploading}
+            className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50"
+          >
+            {saving && <Loader2 size={15} className="animate-spin" />}
+            {editing ? "Guardar cambios" : "Crear producto"}
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }

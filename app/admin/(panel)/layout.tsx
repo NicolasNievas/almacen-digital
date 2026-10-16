@@ -1,10 +1,12 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { ClipboardList, LayoutDashboard, Package, ShoppingCart } from "lucide-react";
+import { ClipboardList, LayoutDashboard, Package, ShoppingCart, Tags } from "lucide-react";
 import SignOutButton from "@/components/admin/SignOutButton";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const nav = [
   { href: "/admin", label: "Métricas", icon: LayoutDashboard },
+  { href: "/admin/productos", label: "Productos", icon: Tags },
   { href: "/admin/stock", label: "Stock", icon: Package },
   { href: "/admin/pos", label: "Punto de venta", icon: ShoppingCart },
   { href: "/admin/pedidos", label: "Pedidos", icon: ClipboardList },
@@ -12,12 +14,13 @@ const nav = [
 
 export default function PanelLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen bg-neutral-50">
-      <header className="border-b border-neutral-200 bg-white">
+    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
+      <header className="border-b border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-          <span className="font-bold text-neutral-900">Panel · Almacén</span>
-          <div className="flex items-center gap-4">
-            <Link href="/" className="text-sm text-neutral-500 hover:text-neutral-900">
+          <span className="font-bold text-neutral-900 dark:text-neutral-100">Panel · Almacén</span>
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
+            <Link href="/" className="text-sm text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white">
               Ver tienda
             </Link>
             <SignOutButton />
@@ -28,7 +31,7 @@ export default function PanelLayout({ children }: { children: ReactNode }) {
             <Link
               key={item.href}
               href={item.href}
-              className="flex items-center gap-2 whitespace-nowrap border-b-2 border-transparent px-3 py-2 text-sm font-medium text-neutral-600 hover:border-green-600 hover:text-neutral-900"
+              className="flex items-center gap-2 whitespace-nowrap border-b-2 border-transparent px-3 py-2 text-sm font-medium text-neutral-600 hover:border-green-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white"
             >
               <item.icon size={16} />
               {item.label}

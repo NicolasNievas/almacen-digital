@@ -26,7 +26,7 @@ export default function SignOutButton() {
       type="button"
       onClick={handleSignOut}
       disabled={loading}
-      className="flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-900 disabled:opacity-50"
+      className="flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-900 disabled:opacity-50 dark:text-neutral-400 dark:hover:text-white"
     >
       <LogOut size={15} /> {loading ? "Saliendo..." : "Salir"}
     </button>

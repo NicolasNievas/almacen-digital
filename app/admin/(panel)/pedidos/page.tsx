@@ -1,37 +1,271 @@
-import { ClipboardList } from "lucide-react";
+"use client";
+
+import { Fragment, useCallback, useEffect, useState } from "react";
+import { Check, ChevronLeft, ChevronRight, ClipboardList, Loader2, RefreshCw, X } from "lucide-react";
+import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { fetchOrdersWithItems } from "@/lib/supabase/queries";
+import { formatARS } from "@/lib/pricing";
+import type { OrderWithItems } from "@/lib/types";
+
+const STATUS_STYLES: Record<string, string> = {
+  PENDING: "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300",
+  COMPLETED: "bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-300",
+  CANCELLED: "bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  PENDING: "Pendiente",
+  COMPLETED: "Completado",
+  CANCELLED: "Cancelado",
+};
+
+const PAGE_SIZE = 10;
+
+function formatDate(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleString("es-AR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 export default function PedidosPage() {
+  const configured = isSupabaseConfigured();
+  const [orders, setOrders] = useState<OrderWithItems[]>([]);
+  const [loading, setLoading] = useState(configured);
+  const [error, setError] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+
+  const load = useCallback(async () => {
+    try {
+      setOrders(await fetchOrdersWithItems());
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudieron cargar los pedidos.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!configured) return;
+    let active = true;
+    (async () => {
+      try {
+        const data = await fetchOrdersWithItems();
+        if (active) {
+          setOrders(data);
+          setError(null);
+        }
+      } catch (err) {
+        if (active) setError(err instanceof Error ? err.message : "No se pudieron cargar los pedidos.");
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [configured]);
+
+  const processOrder = async (id: string, rpc: "confirm_order" | "cancel_order") => {
+    setBusyId(id);
+    setError(null);
+    try {
+      const { error: rpcError } = await createClient().rpc(rpc, { p_order: id });
+      if (rpcError) throw rpcError;
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo procesar el pedido.");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const totalPages = Math.max(1, Math.ceil(orders.length / PAGE_SIZE));
+  const current = Math.min(page, totalPages);
+  const pageOrders = orders.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
+
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-bold text-neutral-900">Pedidos</h1>
-        <p className="text-sm text-neutral-500">
-          Fase 2: los pedidos web (WhatsApp) y del POS se guardan en Supabase y se listan acá.
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-neutral-900 dark:text-neutral-100">Pedidos</h1>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">
+            Pedidos web y ventas del POS. Los pedidos web llegan como <b>Pendiente</b>: al confirmarlos se
+            descuenta el stock.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => configured && void load()}
+          className="flex shrink-0 items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-sm text-neutral-600 hover:text-neutral-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:text-white"
+        >
+          <RefreshCw size={14} /> Actualizar
+        </button>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
-        <table className="w-full min-w-[560px] text-sm">
-          <thead className="bg-neutral-50 text-left text-neutral-500">
+      {error && <p className="rounded bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">{error}</p>}
+
+      {!configured && (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-center text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
+          Configurá <code>.env.local</code> para ver los pedidos de Supabase.
+        </p>
+      )}
+
+      <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+        <table className="w-full min-w-[820px] text-sm">
+          <thead className="bg-neutral-50 text-left text-neutral-500 dark:bg-neutral-800/50 dark:text-neutral-400">
             <tr>
-              <th className="p-3 font-medium">Pedido</th>
-              <th className="font-medium">Cliente</th>
-              <th className="font-medium">Retiro</th>
-              <th className="font-medium">Pago</th>
-              <th className="font-medium">Total</th>
-              <th className="font-medium">Origen</th>
+              <th className="p-3 font-medium">Fecha</th>
+              <th className="p-3 font-medium">Origen</th>
+              <th className="p-3 font-medium">Cliente</th>
+              <th className="p-3 font-medium">Retiro</th>
+              <th className="p-3 font-medium">Pago</th>
+              <th className="p-3 font-medium">Total</th>
+              <th className="p-3 font-medium">Estado</th>
+              <th className="p-3 font-medium">Acciones</th>
             </tr>
           </thead>
-          <tbody>
-            <tr>
-              <td colSpan={6} className="p-10 text-center text-neutral-500">
-                <ClipboardList className="mx-auto mb-2 h-8 w-8 text-neutral-300" />
-                Todavía no hay pedidos.
-              </td>
-            </tr>
+          <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
+            {loading ? (
+              <tr>
+                <td colSpan={8} className="p-10 text-center text-neutral-500 dark:text-neutral-400">
+                  <Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin" />
+                  Cargando pedidos...
+                </td>
+              </tr>
+            ) : orders.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="p-10 text-center text-neutral-500 dark:text-neutral-400">
+                  <ClipboardList className="mx-auto mb-2 h-8 w-8 text-neutral-300 dark:text-neutral-600" />
+                  Todavía no hay pedidos.
+                </td>
+              </tr>
+            ) : (
+              pageOrders.map((order) => (
+                <Fragment key={order.id}>
+                  <tr className="text-neutral-800 dark:text-neutral-200">
+                    <td className="p-3 whitespace-nowrap text-neutral-500 dark:text-neutral-400">{formatDate(order.created_at)}</td>
+                    <td className="p-3">
+                      <span
+                        className={
+                          order.source === "POS"
+                            ? "rounded bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"
+                            : "rounded bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-950/40 dark:text-green-300"
+                        }
+                      >
+                        {order.source}
+                      </span>
+                    </td>
+                    <td className="p-3">{order.customer_name ?? "—"}</td>
+                    <td className="p-3 text-neutral-500 dark:text-neutral-400">
+                      {order.source === "POS" ? (
+                        <span className="italic">Venta presencial</span>
+                      ) : (
+                        order.pickup_time?.slice(0, 5) ?? "—"
+                      )}
+                    </td>
+                    <td className="p-3 text-neutral-500 dark:text-neutral-400">{order.payment_method ?? "—"}</td>
+                    <td className="p-3 font-medium">{formatARS(order.total)}</td>
+                    <td className="p-3">
+                      <span
+                        className={`rounded px-2 py-0.5 text-xs font-medium ${
+                          STATUS_STYLES[order.status] ?? "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300"
+                        }`}
+                      >
+                        {STATUS_LABELS[order.status] ?? order.status}
+                      </span>
+                    </td>
+                    <td className="p-3">
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setExpanded(expanded === order.id ? null : order.id)}
+                          className="text-xs text-neutral-500 underline-offset-2 hover:text-neutral-900 hover:underline dark:text-neutral-400 dark:hover:text-white"
+                        >
+                          {expanded === order.id ? "Ocultar" : `Ver ${order.items.length} item(s)`}
+                        </button>
+                        {order.status === "PENDING" && (
+                          <>
+                            <button
+                              type="button"
+                              disabled={busyId === order.id}
+                              onClick={() => void processOrder(order.id, "confirm_order")}
+                              className="flex items-center gap-1 rounded bg-green-600 px-2 py-1 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-40"
+                            >
+                              <Check size={13} /> Confirmar
+                            </button>
+                            <button
+                              type="button"
+                              disabled={busyId === order.id}
+                              onClick={() => void processOrder(order.id, "cancel_order")}
+                              className="flex items-center gap-1 rounded border border-neutral-300 px-2 py-1 text-xs font-medium text-neutral-600 hover:text-red-600 disabled:opacity-40 dark:border-neutral-700 dark:text-neutral-300"
+                            >
+                              <X size={13} /> Cancelar
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                  {expanded === order.id && (
+                    <tr className="bg-neutral-50 dark:bg-neutral-800/40">
+                      <td colSpan={8} className="px-3 py-2">
+                        <ul className="space-y-1">
+                          {order.items.map((item, index) => (
+                            <li
+                              key={`${order.id}-${index}`}
+                              className="flex items-center justify-between text-xs text-neutral-600 dark:text-neutral-400"
+                            >
+                              <span>
+                                {item.quantity}x {item.product_name}
+                              </span>
+                              <span className="font-medium text-neutral-900 dark:text-neutral-100">{formatARS(item.line_total)}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              ))
+            )}
           </tbody>
         </table>
       </div>
+
+      {!loading && orders.length > PAGE_SIZE && (
+        <div className="flex items-center justify-between text-sm text-neutral-600 dark:text-neutral-300">
+          <span>
+            Página {current} de {totalPages} · {orders.length} pedidos
+          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={current <= 1}
+              onClick={() => setPage(current - 1)}
+              className="flex items-center gap-1 rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-neutral-700 hover:text-neutral-900 disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:text-white"
+            >
+              <ChevronLeft size={15} /> Anterior
+            </button>
+            <button
+              type="button"
+              disabled={current >= totalPages}
+              onClick={() => setPage(current + 1)}
+              className="flex items-center gap-1 rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-neutral-700 hover:text-neutral-900 disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:text-white"
+            >
+              Siguiente <ChevronRight size={15} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

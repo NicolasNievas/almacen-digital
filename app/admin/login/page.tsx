@@ -30,39 +30,39 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-neutral-50 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-neutral-50 px-4 dark:bg-neutral-950">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-sm space-y-4 rounded-xl border border-neutral-200 bg-white p-6 shadow-sm"
+        className="w-full max-w-sm space-y-4 rounded-xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900"
       >
         <div className="space-y-1 text-center">
-          <h1 className="text-xl font-bold text-neutral-900">Panel del Almacén</h1>
-          <p className="text-sm text-neutral-500">Ingresá con tu cuenta de administrador</p>
+          <h1 className="text-xl font-bold text-neutral-900 dark:text-neutral-100">Panel del Almacén</h1>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">Ingresá con tu cuenta de administrador</p>
         </div>
 
         <label className="block space-y-1">
-          <span className="text-xs font-medium text-neutral-600">Email</span>
+          <span className="text-xs font-medium text-neutral-600 dark:text-neutral-400">Email</span>
           <input
             type="email"
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-green-600"
+            className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-green-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
           />
         </label>
 
         <label className="block space-y-1">
-          <span className="text-xs font-medium text-neutral-600">Contraseña</span>
+          <span className="text-xs font-medium text-neutral-600 dark:text-neutral-400">Contraseña</span>
           <input
             type="password"
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-green-600"
+            className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-green-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
           />
         </label>
 
-        {error && <p className="rounded bg-red-50 p-2 text-xs text-red-700">{error}</p>}
+        {error && <p className="rounded bg-red-50 p-2 text-xs text-red-700 dark:bg-red-950/40 dark:text-red-300">{error}</p>}
 
         <button
           type="submit"
@@ -72,8 +72,8 @@ export default function LoginPage() {
           <LogIn size={18} /> {loading ? "Ingresando..." : "Ingresar"}
         </button>
 
-        <p className="text-center text-xs text-neutral-400">
-          Requiere <code>NEXT_PUBLIC_SUPABASE_URL</code> y <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code>.
+        <p className="text-center text-xs text-neutral-400 dark:text-neutral-500">
+          Requiere <code>NEXT_PUBLIC_SUPABASE_URL</code> y <code>NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY</code>.
         </p>
       </form>
     </div>

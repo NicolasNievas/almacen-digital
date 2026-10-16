@@ -8,7 +8,7 @@ import { NextResponse, type NextRequest } from "next/server";
  */
 export async function proxy(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
   // Fase 1: sin Supabase configurado no hay sesión que validar.
   if (!url || !anonKey) return NextResponse.next();

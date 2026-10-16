@@ -7,15 +7,17 @@ import { calcSubtotal, formatARS } from "@/lib/pricing";
 
 type Props = {
   products: Product[];
-  // Fase 2: conectar al RPC `create_sale` de Supabase.
+  // Se conecta al RPC `create_sale` de Supabase.
   onCheckout?: (lines: CartLine[], customer: string, payment: string) => Promise<void> | void;
 };
 
 const PAYMENTS = ["Efectivo", "Transferencia", "Débito", "Crédito"] as const;
+const PAGE_SIZE = 12;
 
 export default function PosScreen({ products, onCheckout }: Props) {
   const [catalog, setCatalog] = useState(products);
   const [query, setQuery] = useState("");
+  const [visible, setVisible] = useState(PAGE_SIZE);
   const [lines, setLines] = useState<CartLine[]>([]);
   const [customer, setCustomer] = useState("");
   const [payment, setPayment] = useState<string>(PAYMENTS[0]);
@@ -55,7 +57,7 @@ export default function PosScreen({ products, onCheckout }: Props) {
     setMessage(null);
     try {
       await onCheckout?.(lines, customer.trim(), payment);
-      // Fase 1: descuento local de stock para simular la venta.
+      // El RPC ya descontó el stock en Supabase: reflejamos la venta en la UI.
       setCatalog((prev) =>
         prev.map((p) => {
           const line = lines.find((l) => l.product.id === p.id);
@@ -72,6 +74,9 @@ export default function PosScreen({ products, onCheckout }: Props) {
     }
   };
 
+  const inputClass =
+    "w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-green-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100";
+
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
       <section className="space-y-3">
@@ -79,41 +84,56 @@ export default function PosScreen({ products, onCheckout }: Props) {
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
           <input
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setVisible(PAGE_SIZE);
+            }}
             placeholder="Buscar producto para vender..."
-            className="w-full rounded-lg border border-neutral-300 bg-white py-2.5 pl-9 pr-3 text-sm text-neutral-900 outline-none focus:border-green-600"
+            className={`${inputClass} py-2.5 pl-9 pr-3`}
           />
         </div>
 
         <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-          {available.map((p) => (
+          {available.slice(0, visible).map((p) => (
             <button
               key={p.id}
               type="button"
               disabled={p.stock <= 0}
               onClick={() => add(p)}
-              className="flex flex-col items-start rounded-lg border border-neutral-200 bg-white p-3 text-left transition-colors hover:border-green-500 disabled:opacity-40"
+              className="flex flex-col items-start rounded-lg border border-neutral-200 bg-white p-3 text-left transition-colors hover:border-green-500 disabled:opacity-40 dark:border-neutral-800 dark:bg-neutral-900"
             >
-              <span className="line-clamp-2 text-sm font-medium text-neutral-900">{p.name}</span>
-              <span className="mt-1 text-sm font-bold text-neutral-900">{formatARS(p.unit_price)}</span>
-              <span className="text-xs text-neutral-400">Stock: {p.stock}</span>
+              <span className="line-clamp-2 text-sm font-medium text-neutral-900 dark:text-neutral-100">{p.name}</span>
+              <span className="mt-1 text-sm font-bold text-neutral-900 dark:text-neutral-100">{formatARS(p.unit_price)}</span>
+              <span className="text-xs text-neutral-400 dark:text-neutral-500">Stock: {p.stock}</span>
             </button>
           ))}
-          {available.length === 0 && <p className="text-sm text-neutral-500">Sin resultados.</p>}
+          {available.length === 0 && <p className="text-sm text-neutral-500 dark:text-neutral-400">Sin resultados.</p>}
         </div>
+
+        {visible < available.length && (
+          <div className="flex justify-center pt-1">
+            <button
+              type="button"
+              onClick={() => setVisible((v) => v + PAGE_SIZE)}
+              className="rounded-lg border border-neutral-300 bg-white px-4 py-1.5 text-sm font-medium text-neutral-700 hover:text-neutral-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:text-white"
+            >
+              Cargar más
+            </button>
+          </div>
+        )}
       </section>
 
-      <aside className="flex h-fit flex-col gap-3 rounded-xl border border-neutral-200 bg-white p-4">
-        <h2 className="flex items-center gap-2 text-base font-semibold text-neutral-900">
+      <aside className="flex h-fit flex-col gap-3 rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+        <h2 className="flex items-center gap-2 text-base font-semibold text-neutral-900 dark:text-neutral-100">
           <ShoppingCart size={18} /> Ticket
         </h2>
 
         <div className="max-h-72 space-y-2 overflow-y-auto">
-          {lines.length === 0 && <p className="text-sm text-neutral-500">Agregá productos para vender.</p>}
+          {lines.length === 0 && <p className="text-sm text-neutral-500 dark:text-neutral-400">Agregá productos para vender.</p>}
           {lines.map((l) => (
-            <div key={l.product.id} className="rounded-lg border border-neutral-200 p-2">
+            <div key={l.product.id} className="rounded-lg border border-neutral-200 p-2 dark:border-neutral-800">
               <div className="flex items-start justify-between gap-2">
-                <span className="text-sm font-medium text-neutral-900">{l.product.name}</span>
+                <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{l.product.name}</span>
                 <button
                   type="button"
                   onClick={() => changeQty(l.product.id, 0)}
@@ -127,22 +147,22 @@ export default function PosScreen({ products, onCheckout }: Props) {
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    className="rounded border border-neutral-300 p-1"
+                    className="rounded border border-neutral-300 p-1 dark:border-neutral-700"
                     onClick={() => changeQty(l.product.id, l.quantity - 1)}
                   >
                     <Minus size={14} />
                   </button>
-                  <span className="w-6 text-center text-sm">{l.quantity}</span>
+                  <span className="w-6 text-center text-sm text-neutral-900 dark:text-neutral-100">{l.quantity}</span>
                   <button
                     type="button"
                     disabled={l.quantity >= l.product.stock}
-                    className="rounded border border-neutral-300 p-1 disabled:opacity-30"
+                    className="rounded border border-neutral-300 p-1 disabled:opacity-30 dark:border-neutral-700"
                     onClick={() => changeQty(l.product.id, l.quantity + 1)}
                   >
                     <Plus size={14} />
                   </button>
                 </div>
-                <span className="text-sm font-semibold text-neutral-900">
+                <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
                   {formatARS(calcSubtotal(l.product, l.quantity))}
                 </span>
               </div>
@@ -150,18 +170,9 @@ export default function PosScreen({ products, onCheckout }: Props) {
           ))}
         </div>
 
-        <input
-          value={customer}
-          onChange={(e) => setCustomer(e.target.value)}
-          placeholder="Cliente (opcional)"
-          className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-green-600"
-        />
+        <input value={customer} onChange={(e) => setCustomer(e.target.value)} placeholder="Cliente (opcional)" className={inputClass} />
 
-        <select
-          value={payment}
-          onChange={(e) => setPayment(e.target.value)}
-          className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-green-600"
-        >
+        <select value={payment} onChange={(e) => setPayment(e.target.value)} className={inputClass}>
           {PAYMENTS.map((p) => (
             <option key={p} value={p}>
               {p}
@@ -169,7 +180,7 @@ export default function PosScreen({ products, onCheckout }: Props) {
           ))}
         </select>
 
-        <div className="flex justify-between text-lg font-bold text-neutral-900">
+        <div className="flex justify-between text-lg font-bold text-neutral-900 dark:text-neutral-100">
           <span>Total</span>
           <span>{formatARS(total)}</span>
         </div>
@@ -183,7 +194,9 @@ export default function PosScreen({ products, onCheckout }: Props) {
           <CheckCircle2 size={18} /> {processing ? "Procesando..." : "Confirmar venta"}
         </button>
 
-        {message && <p className="rounded bg-neutral-100 p-2 text-xs text-neutral-700">{message}</p>}
+        {message && (
+          <p className="rounded bg-neutral-100 p-2 text-xs text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">{message}</p>
+        )}
       </aside>
     </div>
   );

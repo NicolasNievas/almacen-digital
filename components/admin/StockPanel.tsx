@@ -8,7 +8,6 @@ const LOW_STOCK = 5;
 
 type Props = {
   initial: Product[];
-  // Fase 2: conectar a Supabase (rpc adjust_stock para stock + update en products para precio/active)
   onSave?: (id: string, patch: Partial<Pick<Product, "stock" | "unit_price" | "active">>) => Promise<void>;
 };
 
@@ -21,41 +20,44 @@ export default function StockPanel({ initial, onSave }: Props) {
     try { await onSave?.(id, patch); } catch { setItems(prev); }
   };
 
+  const inputClass =
+    "rounded border border-neutral-300 bg-white text-neutral-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100";
+
   return (
     <div className="overflow-x-auto p-4">
       <table className="w-full min-w-[640px] text-sm">
-        <thead className="text-left text-neutral-500">
+        <thead className="text-left text-neutral-500 dark:text-neutral-400">
           <tr><th className="p-2">Producto</th><th>Stock</th><th>Precio unitario</th><th>Venta</th></tr>
         </thead>
         <tbody>
           {items.map((p) => {
             const low = p.stock < LOW_STOCK;
             return (
-              <tr key={p.id} className={`border-t ${!p.active ? "opacity-50" : ""}`}>
-                <td className="p-2 font-medium">
+              <tr key={p.id} className={`border-t border-neutral-200 dark:border-neutral-800 ${!p.active ? "opacity-50" : ""}`}>
+                <td className="p-2 font-medium text-neutral-900 dark:text-neutral-100">
                   {p.name}
                   {low && (
-                    <span className="ml-2 inline-flex items-center gap-1 rounded bg-red-100 px-1.5 text-xs text-red-700">
+                    <span className="ml-2 inline-flex items-center gap-1 rounded bg-red-100 px-1.5 text-xs text-red-700 dark:bg-red-950/40 dark:text-red-300">
                       <AlertTriangle size={12} /> {p.stock === 0 ? "Agotado" : "Stock crítico"}
                     </span>
                   )}
                 </td>
                 <td>
                   <div className="flex items-center gap-1">
-                    <button className="rounded border px-2" onClick={() => update(p.id, { stock: Math.max(0, p.stock - 1) })}>−</button>
-                    <input type="number" min={0} className="w-16 rounded border p-1 text-center" value={p.stock}
+                    <button className={`${inputClass} px-2`} onClick={() => update(p.id, { stock: Math.max(0, p.stock - 1) })}>−</button>
+                    <input type="number" min={0} className={`${inputClass} w-16 p-1 text-center`} value={p.stock}
                       onChange={(e) => update(p.id, { stock: Math.max(0, Number(e.target.value)) })} />
-                    <button className="rounded border px-2" onClick={() => update(p.id, { stock: p.stock + 1 })}>+</button>
+                    <button className={`${inputClass} px-2`} onClick={() => update(p.id, { stock: p.stock + 1 })}>+</button>
                   </div>
                 </td>
                 <td>
-                  <input type="number" min={0} className="w-28 rounded border p-1" defaultValue={p.unit_price}
+                  <input type="number" min={0} className={`${inputClass} w-28 p-1`} defaultValue={p.unit_price}
                     onBlur={(e) => Number(e.target.value) !== p.unit_price && update(p.id, { unit_price: Number(e.target.value) })} />
-                  <span className="ml-2 text-neutral-400">{formatARS(p.unit_price)}</span>
+                  <span className="ml-2 text-neutral-400 dark:text-neutral-500">{formatARS(p.unit_price)}</span>
                 </td>
                 <td>
                   <button role="switch" aria-checked={p.active} onClick={() => update(p.id, { active: !p.active })}
-                    className={`rounded-full px-3 py-1 text-xs font-medium ${p.active ? "bg-green-600 text-white" : "bg-neutral-300"}`}>
+                    className={`rounded-full px-3 py-1 text-xs font-medium ${p.active ? "bg-green-600 text-white" : "bg-neutral-300 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-200"}`}>
                     {p.active ? "Activo" : "Pausado"}
                   </button>
                 </td>
