@@ -35,7 +35,7 @@ export default function CategoryManager({ categories, onClose, onSaved }: Props)
   const [error, setError] = useState<string | null>(null);
 
   const inputClass =
-    "w-full rounded-lg border border-neutral-300 bg-white px-2 py-1.5 text-sm text-neutral-900 outline-none focus:border-green-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100";
+    "w-full rounded-lg border border-neutral-300 bg-white px-2 py-1.5 text-sm text-neutral-900 outline-none focus:border-brand dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100";
 
   const saveRow = async (row: Row) => {
     if (!row.name.trim()) return;
@@ -116,7 +116,7 @@ export default function CategoryManager({ categories, onClose, onSaved }: Props)
                 type="button"
                 onClick={() => void saveRow(row)}
                 disabled={busyId === row.id}
-                className="rounded-lg bg-green-600 p-2 text-white hover:bg-green-700 disabled:opacity-50"
+                className="rounded-lg bg-brand-solid p-2 text-white hover:bg-brand-accent disabled:opacity-50"
                 aria-label="Guardar"
               >
                 {busyId === row.id ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
@@ -156,7 +156,7 @@ export default function CategoryManager({ categories, onClose, onSaved }: Props)
               type="button"
               onClick={() => void addCategory()}
               disabled={!newName.trim() || busyId === slugify(newName)}
-              className="flex items-center gap-1 rounded-lg bg-green-600 px-3 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50"
+              className="flex items-center gap-1 rounded-lg bg-brand-solid px-3 py-2 text-sm font-semibold text-white hover:bg-brand-accent disabled:opacity-50"
             >
               <Plus size={15} /> Agregar
             </button>

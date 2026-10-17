@@ -49,7 +49,7 @@ export default function ProductCard({ product, quantityInCart = 0, onAdd }: Prop
             {product.tags.map((tag) => (
               <span
                 key={tag}
-                className="rounded bg-green-600 px-2 py-0.5 text-[10px] font-semibold uppercase text-white"
+                className="rounded bg-brand-solid px-2 py-0.5 text-[10px] font-semibold uppercase text-white"
               >
                 {tag}
               </span>
@@ -75,7 +75,7 @@ export default function ProductCard({ product, quantityInCart = 0, onAdd }: Prop
             type="button"
             disabled={outOfStock}
             onClick={() => onAdd(product)}
-            className="flex items-center gap-1 rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex items-center gap-1 rounded-lg bg-brand-solid px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-brand-accent disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Plus size={16} />
             {quantityInCart > 0 ? `Agregar (${quantityInCart})` : "Agregar"}

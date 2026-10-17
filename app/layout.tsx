@@ -14,8 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Almacén Digital",
-  description: "Catálogo online con pedidos por WhatsApp y panel de administración",
+  title: "AG Mayorista · Ventas por mayor y menor",
+  description:
+    "Catálogo online de AG Mayorista: ventas por mayor y menor, pedidos por WhatsApp y panel de administración.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -25,7 +26,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-background text-foreground">
+      <body className="flex min-h-screen flex-col bg-background text-foreground">
         <ThemeScript />
         {children}
       </body>

@@ -119,7 +119,7 @@ export default function PanelHomePage() {
               <div key={card.label} className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">{card.label}</span>
-                  <card.icon size={18} className="text-green-600" />
+                  <card.icon size={18} className="text-brand" />
                 </div>
                 <p className="mt-2 text-2xl font-bold text-neutral-900 dark:text-neutral-100">{card.value}</p>
                 <p className="text-xs text-neutral-400 dark:text-neutral-500">{card.hint}</p>

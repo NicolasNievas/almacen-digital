@@ -75,7 +75,7 @@ export default function PosScreen({ products, onCheckout }: Props) {
   };
 
   const inputClass =
-    "w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-green-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100";
+    "w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-brand dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100";
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
@@ -100,7 +100,7 @@ export default function PosScreen({ products, onCheckout }: Props) {
               type="button"
               disabled={p.stock <= 0}
               onClick={() => add(p)}
-              className="flex flex-col items-start rounded-lg border border-neutral-200 bg-white p-3 text-left transition-colors hover:border-green-500 disabled:opacity-40 dark:border-neutral-800 dark:bg-neutral-900"
+              className="flex flex-col items-start rounded-lg border border-neutral-200 bg-white p-3 text-left transition-colors hover:border-brand disabled:opacity-40 dark:border-neutral-800 dark:bg-neutral-900"
             >
               <span className="line-clamp-2 text-sm font-medium text-neutral-900 dark:text-neutral-100">{p.name}</span>
               <span className="mt-1 text-sm font-bold text-neutral-900 dark:text-neutral-100">{formatARS(p.unit_price)}</span>
@@ -189,7 +189,7 @@ export default function PosScreen({ products, onCheckout }: Props) {
           type="button"
           disabled={lines.length === 0 || processing}
           onClick={confirm}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-green-600 py-2.5 font-semibold text-white hover:bg-green-700 disabled:opacity-40"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-brand-solid py-2.5 font-semibold text-white hover:bg-brand-accent disabled:opacity-40"
         >
           <CheckCircle2 size={18} /> {processing ? "Procesando..." : "Confirmar venta"}
         </button>

@@ -119,7 +119,7 @@ export default function ProductForm({ product, categories, onClose, onSaved }: P
   };
 
   const inputClass =
-    "w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-green-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100";
+    "w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-brand dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100";
   const labelClass = "block space-y-1 text-xs font-medium text-neutral-600 dark:text-neutral-400";
 
   return (
@@ -243,7 +243,7 @@ export default function ProductForm({ product, categories, onClose, onSaved }: P
             <button
               type="button"
               onClick={() => setTiers((prev) => [...prev, { min_quantity: "", unit_price: "" }])}
-              className="flex items-center gap-1 text-sm text-green-700 hover:underline dark:text-green-400"
+              className="flex items-center gap-1 text-sm text-brand hover:underline"
             >
               <Plus size={14} /> Agregar escalón
             </button>
@@ -343,7 +343,7 @@ export default function ProductForm({ product, categories, onClose, onSaved }: P
           <button
             type="submit"
             disabled={saving || uploading}
-            className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50"
+            className="flex items-center gap-2 rounded-lg bg-brand-solid px-4 py-2 text-sm font-semibold text-white hover:bg-brand-accent disabled:opacity-50"
           >
             {saving && <Loader2 size={15} className="animate-spin" />}
             {editing ? "Guardar cambios" : "Crear producto"}

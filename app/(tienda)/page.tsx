@@ -124,7 +124,12 @@ export default function TiendaPage() {
   const total = lines.reduce((acc, l) => acc + calcSubtotal(l.product, l.quantity), 0);
 
   return (
-    <div className="space-y-5 pb-20">
+    <div className="flex flex-col space-y-5 pb-20">
+      <div className="overflow-hidden rounded-xl bg-gradient-to-r from-brand-solid to-brand-accent px-5 py-4 text-white shadow-sm">
+        <p className="text-lg font-extrabold tracking-tight">{STORE.subtitle}</p>
+        <p className="text-sm text-white/90">{STORE.slogan}</p>
+      </div>
+
       <div className="flex items-center justify-between gap-3">
         <div className="text-sm text-neutral-500 dark:text-neutral-400">
           {loading ? "Cargando catálogo..." : `${products.length} productos disponibles`}
@@ -212,7 +217,7 @@ export default function TiendaPage() {
       <button
         type="button"
         onClick={() => setCartOpen(true)}
-        className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full bg-green-600 px-5 py-3 font-semibold text-white shadow-lg transition-colors hover:bg-green-700"
+        className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full bg-brand-solid px-5 py-3 font-semibold text-white shadow-lg transition-colors hover:bg-brand-accent"
       >
         <ShoppingCart size={20} />
         {totalItems > 0 ? `${totalItems} · ${formatARS(total)}` : "Carrito"}

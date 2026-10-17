@@ -37,6 +37,8 @@ export type ProductInput = {
 
 export type Store = {
   name: string;
+  subtitle: string;
+  slogan: string;
   whatsapp: string;
   alias: string;
   cbu: string;
