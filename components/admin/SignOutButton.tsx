@@ -1,23 +1,24 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 export default function SignOutButton() {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   const handleSignOut = async () => {
+    if (loading) return;
     setLoading(true);
+
     try {
       if (isSupabaseConfigured()) {
         await createClient().auth.signOut();
       }
+    } catch (error) {
+      console.error("Error al cerrar sesión:", error);
     } finally {
-      router.push("/admin/login");
-      router.refresh();
+      window.location.href = "/admin/login";
     }
   };
 

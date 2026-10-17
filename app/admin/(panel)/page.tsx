@@ -90,7 +90,7 @@ export default function PanelHomePage() {
         <div>
           <h1 className="text-xl font-bold text-neutral-900 dark:text-neutral-100">Métricas</h1>
           <p className="text-sm text-neutral-500 dark:text-neutral-400">
-            Ventas reales desde la tabla <code>orders</code> y stock desde <code>products</code>.
+            Resumen ejecutivo de ingresos, volumen de ventas y estado general del inventario.
           </p>
         </div>
         <button
@@ -106,7 +106,7 @@ export default function PanelHomePage() {
 
       {!configured ? (
         <p className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-center text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
-          Configurá <code>.env.local</code> para ver las métricas reales de Supabase.
+          No pudimos cargar las métricas en este momento. Volvé a intentar en unos minutos.
         </p>
       ) : loading ? (
         <div className="flex items-center justify-center gap-2 py-20 text-neutral-500 dark:text-neutral-400">

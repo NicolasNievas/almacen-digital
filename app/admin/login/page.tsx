@@ -3,7 +3,8 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { LogIn } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { STORE } from "@/lib/store";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -17,13 +18,17 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     try {
+      if (!isSupabaseConfigured()) {
+        throw new Error("No pudimos conectar con el servicio de cuentas. Contactá al administrador.");
+      }
       const supabase = createClient();
       const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
       if (signInError) throw signInError;
       router.push("/admin");
       router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo iniciar sesión.");
+    } catch {
+      // No mostramos el detalle técnico: solo un mensaje amigable.
+      setError("No se pudo iniciar sesión. Verificá tu email y contraseña.");
     } finally {
       setLoading(false);
     }
@@ -36,8 +41,8 @@ export default function LoginPage() {
         className="w-full max-w-sm space-y-4 rounded-xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900"
       >
         <div className="space-y-1 text-center">
-          <h1 className="text-xl font-bold text-neutral-900 dark:text-neutral-100">Panel del Almacén</h1>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">Ingresá con tu cuenta de administrador</p>
+          <h1 className="text-xl font-bold text-brand">{STORE.name}</h1>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">Ingresá a tu panel de administración</p>
         </div>
 
         <label className="block space-y-1">
@@ -71,10 +76,6 @@ export default function LoginPage() {
         >
           <LogIn size={18} /> {loading ? "Ingresando..." : "Ingresar"}
         </button>
-
-        <p className="text-center text-xs text-neutral-400 dark:text-neutral-500">
-          Requiere <code>NEXT_PUBLIC_SUPABASE_URL</code> y <code>NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY</code>.
-        </p>
       </form>
     </div>
   );

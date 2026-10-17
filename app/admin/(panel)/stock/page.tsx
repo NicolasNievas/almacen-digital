@@ -77,8 +77,7 @@ export default function StockPage() {
         <div>
           <h1 className="text-xl font-bold text-neutral-900 dark:text-neutral-100">Stock</h1>
           <p className="text-sm text-neutral-500 dark:text-neutral-400">
-            Productos en vivo desde Supabase. El stock usa el RPC <code>adjust_stock</code>; el precio y el
-            estado ON/OFF se guardan con un update.
+            Control rápido de existencias, precios y disponibilidad de productos en góndola.
           </p>
         </div>
         <button
@@ -94,7 +93,7 @@ export default function StockPage() {
 
       {!configured ? (
         <p className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-center text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
-          Configurá <code>.env.local</code> para administrar el stock desde Supabase.
+          No pudimos cargar el stock en este momento. Volvé a intentar en unos minutos.
         </p>
       ) : loading ? (
         <div className="flex items-center justify-center gap-2 py-20 text-neutral-500 dark:text-neutral-400">

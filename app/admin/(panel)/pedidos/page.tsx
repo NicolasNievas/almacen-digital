@@ -98,8 +98,7 @@ export default function PedidosPage() {
         <div>
           <h1 className="text-xl font-bold text-neutral-900 dark:text-neutral-100">Pedidos</h1>
           <p className="text-sm text-neutral-500 dark:text-neutral-400">
-            Pedidos web y ventas del POS. Los pedidos web llegan como <b>Pendiente</b>: al confirmarlos se
-            descuenta el stock.
+            Gestión de pedidos web pendientes de confirmación y registro de ventas presenciales.
           </p>
         </div>
         <button
@@ -115,7 +114,7 @@ export default function PedidosPage() {
 
       {!configured && (
         <p className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-center text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
-          Configurá <code>.env.local</code> para ver los pedidos de Supabase.
+          No pudimos cargar los pedidos en este momento. Volvé a intentar en unos minutos.
         </p>
       )}
 

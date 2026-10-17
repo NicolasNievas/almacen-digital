@@ -66,7 +66,7 @@ export default function PosPage() {
         <div>
           <h1 className="text-xl font-bold text-neutral-900 dark:text-neutral-100">Punto de venta</h1>
           <p className="text-sm text-neutral-500 dark:text-neutral-400">
-            Cada venta descuenta stock en Supabase mediante el RPC <code>create_sale</code> (origen POS).
+            Caja registradora presencial para cobro rápido y descuento automático de stock.
           </p>
         </div>
         <button
@@ -82,7 +82,7 @@ export default function PosPage() {
 
       {!configured ? (
         <p className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-center text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
-          Configurá <code>.env.local</code> para registrar ventas en Supabase.
+          No pudimos cargar el punto de venta en este momento. Volvé a intentar en unos minutos.
         </p>
       ) : loading ? (
         <div className="flex items-center justify-center gap-2 py-20 text-neutral-500 dark:text-neutral-400">
