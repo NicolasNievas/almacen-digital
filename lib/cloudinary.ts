@@ -10,21 +10,23 @@ function optimized(url: string): string {
   return url.includes("/upload/") ? url.replace("/upload/", "/upload/f_auto,q_auto/") : url;
 }
 
+/** Tipos MIME que Cloudinary va a servir como imagen segura (excluye SVG). */
+const ACCEPTED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+
 /**
  * Sube una imagen a Cloudinary usando un preset no firmado.
- * Restringe a archivos de imagen y 5 MB como máximo.
+ * Restringe a formatos de imagen raster y 5 MB como máximo.
  */
 export async function uploadImage(file: File): Promise<string> {
   const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
   const preset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
   if (!cloudName || !preset) {
-    throw new Error(
-      "Cloudinary no está configurado. Definí NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME y NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET.",
-    );
+    console.error("Faltan NEXT_PUBLIC_CLOUDINARY_* en las variables de entorno.");
+    throw new Error("No pudimos subir la imagen. Volvé a intentar en unos minutos.");
   }
-  if (!file.type.startsWith("image/")) {
-    throw new Error("Solo se permiten archivos de imagen.");
+  if (!ACCEPTED_IMAGE_TYPES.has(file.type)) {
+    throw new Error("Solo se admiten fotos JPG, PNG o WebP.");
   }
   if (file.size > 5 * 1024 * 1024) {
     throw new Error("La imagen supera el límite de 5 MB.");
@@ -40,12 +42,18 @@ export async function uploadImage(file: File): Promise<string> {
   });
 
   if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`No se pudo subir la imagen (${response.status}). ${text}`);
+    // El cuerpo de Cloudinary puede traer detalles internos: no lo mostramos.
+    console.error("Cloudinary rechazó la subida:", response.status, await response.text());
+    throw new Error("No se pudo subir la imagen. Revisá el formato y el tamaño e intentá otra vez.");
   }
 
   const data = (await response.json()) as { secure_url?: string; url?: string };
   const url = data.secure_url ?? data.url;
-  if (!url) throw new Error("Cloudinary no devolvió una URL.");
+  if (!url) throw new Error("No se pudo obtener la URL de la imagen. Intentá otra vez.");
+  // Seguridad: solo aceptamos URLs de res.cloudinary.com (coincide con next.config.ts).
+  if (!url.startsWith("https://res.cloudinary.com/")) {
+    console.error("Cloudinary devolvió una URL inesperada:", url);
+    throw new Error("No se pudo subir la imagen. Volvé a intentar en unos minutos.");
+  }
   return optimized(url);
 }

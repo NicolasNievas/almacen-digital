@@ -83,7 +83,21 @@ export default function ProductForm({ product, categories, onClose, onSaved }: P
 
     if (!form.name.trim()) return setError("El nombre es obligatorio.");
     if (!form.category_id) return setError("Elegí una categoría.");
-    if (form.unit_price < 0) return setError("El precio no puede ser negativo.");
+    if (!Number.isFinite(form.unit_price) || form.unit_price < 0)
+      return setError("El precio no puede ser negativo.");
+
+    // El optimizador de imágenes solo admite res.cloudinary.com (ver next.config.ts).
+    if (form.image_url) {
+      let parsed: URL;
+      try {
+        parsed = new URL(form.image_url);
+      } catch {
+        return setError("La URL de imagen no es válida.");
+      }
+      if (parsed.protocol !== "https:" || parsed.hostname !== "res.cloudinary.com") {
+        return setError("La imagen debe ser de res.cloudinary.com o subirla desde el panel.");
+      }
+    }
 
     const pricing_tiers: PricingTier[] =
       form.pricing_type === "TIERED"

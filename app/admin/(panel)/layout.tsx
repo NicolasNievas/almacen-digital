@@ -1,12 +1,43 @@
 import type { ReactNode } from "react";
+import type { User } from "@supabase/supabase-js";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Store } from "lucide-react";
 import SignOutButton from "@/components/admin/SignOutButton";
 import AdminNav from "@/components/admin/AdminNav";
 import ThemeToggle from "@/components/ThemeToggle";
 import { STORE } from "@/lib/store";
+import { createClient } from "@/lib/supabase/server";
 
-export default function PanelLayout({ children }: { children: ReactNode }) {
+// El layout lee cookies (sesión de Supabase) = dato dinámico, por lo que
+// /admin debe renderizarse a tiempo de request en lugar de prerenderizarse.
+export const dynamic = "force-dynamic";
+
+/**
+ * Refuerzo server-side: el proxy (`proxy.ts`) ya filtra, pero este layout
+ * vuelve a verificar la sesión y el rol admin ANTES de renderizar cualquier
+ * vista administrativa. Así /admin queda protegido aunque el proxy falle,
+ * se omita o no matchee la ruta.
+ */
+async function requireAdmin() {
+  let authUser: User | null = null;
+  let failed = false;
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.auth.getUser();
+    if (error) failed = true;
+    authUser = data.user;
+  } catch {
+    failed = true;
+  }
+  if (failed || !authUser || authUser.app_metadata?.role !== "admin") {
+    redirect("/admin/login");
+  }
+}
+
+export default async function PanelLayout({ children }: { children: ReactNode }) {
+  await requireAdmin();
+
   return (
     <div className="flex flex-1 flex-col bg-neutral-50 dark:bg-neutral-950">
       <header className="border-b border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">

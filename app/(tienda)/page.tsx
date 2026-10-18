@@ -36,7 +36,8 @@ export default function TiendaPage() {
       setCategories(data.categories);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudieron cargar los productos.");
+      console.error("No se pudo cargar el catalogo:", err);
+      setError("No se pudo cargar la información. Volvé a intentar en unos minutos.");
     } finally {
       setLoading(false);
     }
@@ -54,7 +55,8 @@ export default function TiendaPage() {
           setError(null);
         }
       } catch (err) {
-        if (active) setError(err instanceof Error ? err.message : "No se pudieron cargar los productos.");
+        console.error("No se pudo cargar el catálogo:", err);
+        if (active) setError("No se pudo cargar la información. Volvé a intentar en unos minutos.");
       } finally {
         if (active) setLoading(false);
       }
@@ -110,8 +112,9 @@ export default function TiendaPage() {
       p_payment: checkout.payment,
     });
     if (orderError) {
+      console.error("No se pudo registrar el pedido:", orderError);
       setNotice(
-        `El pedido se abrió en WhatsApp, pero no se pudo registrar en el sistema: ${orderError.message}`,
+        "No pudimos registrar el pedido en el sistema. El comercio lo recibirá igual por WhatsApp.",
       );
       return;
     }
@@ -154,8 +157,7 @@ export default function TiendaPage() {
 
       {!configured ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-center text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
-          La tienda todavía no está conectada. Copiá <code>.env.local.example</code> a{" "}
-          <code>.env.local</code> con las claves de Supabase.
+          Estamos preparando el catálogo. Volvé a intentar en unos minutos.
         </div>
       ) : error ? (
         <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">

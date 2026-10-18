@@ -10,8 +10,14 @@ export async function proxy(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
-  // Fase 1: sin Supabase configurado no hay sesión que validar.
-  if (!url || !anonKey) return NextResponse.next();
+  // FALLO CERRADO: sin variables de entorno no hay sesión posible,
+  // así que NUNCA dejamos pasar /admin (evita exponer el panel en un
+  // despliegue mal configurado).
+  if (!url || !anonKey) {
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = "/admin/login";
+    return NextResponse.redirect(loginUrl);
+  }
 
   let response = NextResponse.next({ request });
 
@@ -35,15 +41,19 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
-  const isLogin = pathname.startsWith("/admin/login");
+  const isLogin = pathname === "/admin/login";
 
-  if (!isLogin && !user) {
+  // Requiere sesión Y rol admin (app_metadata es confiable: no lo escribe el cliente).
+  const role = user?.app_metadata?.role;
+  const isAdmin = Boolean(user) && role === "admin";
+
+  if (!isLogin && !isAdmin) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/admin/login";
     return NextResponse.redirect(loginUrl);
   }
 
-  if (isLogin && user) {
+  if (isLogin && isAdmin) {
     const adminUrl = request.nextUrl.clone();
     adminUrl.pathname = "/admin";
     return NextResponse.redirect(adminUrl);

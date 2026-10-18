@@ -2,14 +2,12 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
-  cacheComponents: true,
-  partialPrefetching: true,
+  cacheComponents: false,
+  partialPrefetching: false, // Habilitarlo solo si cacheComponents: true
+
   images: {
-    remotePatterns: [
-      { protocol: "https", hostname: "res.cloudinary.com" },
-      // El panel permite pegar URLs de imagen de cualquier origen.
-      { protocol: "https", hostname: "**" },
-    ],
+    // Solo Cloudinary: evita usar el optimizador como proxy de imágenes abierto.
+    remotePatterns: [{ protocol: "https", hostname: "res.cloudinary.com", pathname: "/**" }],
   },
   turbopack: {
     rules: {
