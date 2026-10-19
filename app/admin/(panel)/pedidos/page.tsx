@@ -1,11 +1,13 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useState } from "react";
-import { Check, ChevronLeft, ChevronRight, ClipboardList, Loader2, RefreshCw, X } from "lucide-react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import Image from "next/image";
+import { Check, ChevronLeft, ChevronRight, ClipboardList, Loader2, Package, Printer, RefreshCw, X } from "lucide-react";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
-import { fetchOrdersWithItems } from "@/lib/supabase/queries";
+import { fetchOrdersWithItems, fetchProducts } from "@/lib/supabase/queries";
+import { printTicket, type TicketItem } from "@/lib/printTicket";
 import { formatARS } from "@/lib/pricing";
-import type { OrderWithItems } from "@/lib/types";
+import type { OrderItemRow, OrderWithItems, Product } from "@/lib/types";
 
 const STATUS_STYLES: Record<string, string> = {
   PENDING: "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300",
@@ -33,18 +35,73 @@ function formatDate(iso: string): string {
   });
 }
 
+function buildTicketItem(item: OrderItemRow, product?: Product): TicketItem {
+  const listUnitPrice =
+    product?.unit_price ?? (item.quantity > 0 ? item.line_total / item.quantity : item.line_total);
+
+  let note: string | undefined;
+  if (product) {
+    if (product.pricing_type === "TIERED" && product.pricing_tiers.length > 0) {
+      const tier = [...product.pricing_tiers]
+        .sort((a, b) => b.min_quantity - a.min_quantity)
+        .find((t) => item.quantity >= t.min_quantity);
+      if (tier && tier.unit_price < listUnitPrice) {
+        note = `(Promo x${tier.min_quantity}+: ${formatARS(tier.unit_price)} c/u)`;
+      }
+    } else if (product.pricing_type === "BUNDLE" && product.bundle_size) {
+      note = `(Pack Combo x${product.bundle_size})`;
+    }
+  }
+
+  return {
+    productName: item.product_name,
+    quantity: item.quantity,
+    unitPrice: listUnitPrice,
+    originalUnitPrice: listUnitPrice,
+    subtotal: item.line_total,
+    note,
+  };
+}
+
+function printOrderTicket(order: OrderWithItems, productsByName: Map<string, Product>): void {
+  const items: TicketItem[] = order.items.map((item) =>
+    buildTicketItem(item, productsByName.get(item.product_name.trim().toLowerCase())),
+  );
+  const originalTotal = items.reduce((acc, i) => acc + (i.originalUnitPrice ?? i.unitPrice) * i.quantity, 0);
+
+  printTicket({
+    orderId: order.id,
+    createdAt: order.created_at,
+    customerName: order.customer_name ?? undefined,
+    source: order.source,
+    paymentMethod: order.payment_method ?? "—",
+    items,
+    total: order.total,
+    originalTotal,
+  });
+}
+
 export default function PedidosPage() {
   const configured = isSupabaseConfigured();
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(configured);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [page, setPage] = useState(1);
 
+  const productsByName = useMemo(() => {
+    const map = new Map<string, Product>();
+    for (const p of products) map.set(p.name.trim().toLowerCase(), p);
+    return map;
+  }, [products]);
+
   const load = useCallback(async () => {
     try {
-      setOrders(await fetchOrdersWithItems());
+      const [ordersData, productsData] = await Promise.all([fetchOrdersWithItems(), fetchProducts()]);
+      setOrders(ordersData);
+      setProducts(productsData);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudieron cargar los pedidos.");
@@ -58,9 +115,10 @@ export default function PedidosPage() {
     let active = true;
     (async () => {
       try {
-        const data = await fetchOrdersWithItems();
+        const [ordersData, productsData] = await Promise.all([fetchOrdersWithItems(), fetchProducts()]);
         if (active) {
-          setOrders(data);
+          setOrders(ordersData);
+          setProducts(productsData);
           setError(null);
         }
       } catch (err) {
@@ -183,13 +241,22 @@ export default function PedidosPage() {
                       </span>
                     </td>
                     <td className="p-3">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-end gap-2">
                         <button
                           type="button"
                           onClick={() => setExpanded(expanded === order.id ? null : order.id)}
-                          className="text-xs text-neutral-500 underline-offset-2 hover:text-neutral-900 hover:underline dark:text-neutral-400 dark:hover:text-white"
+                          className="w-24 shrink-0 text-left text-xs text-neutral-500 underline-offset-2 hover:text-neutral-900 hover:underline dark:text-neutral-400 dark:hover:text-white"
                         >
                           {expanded === order.id ? "Ocultar" : `Ver ${order.items.length} item(s)`}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => printOrderTicket(order, productsByName)}
+                          className="flex items-center gap-1 rounded border border-neutral-300 px-2 py-1 text-xs font-medium text-neutral-600 hover:text-neutral-900 dark:border-neutral-700 dark:text-neutral-300 dark:hover:text-white"
+                          aria-label="Imprimir ticket"
+                          title="Imprimir ticket"
+                        >
+                          <Printer size={13} /> Imprimir
                         </button>
                         {order.status === "PENDING" && (
                           <>
@@ -214,25 +281,50 @@ export default function PedidosPage() {
                       </div>
                     </td>
                   </tr>
-                  {expanded === order.id && (
-                    <tr className="bg-neutral-50 dark:bg-neutral-800/40">
-                      <td colSpan={8} className="px-3 py-2">
-                        <ul className="space-y-1">
-                          {order.items.map((item, index) => (
-                            <li
-                              key={`${order.id}-${index}`}
-                              className="flex items-center justify-between text-xs text-neutral-600 dark:text-neutral-400"
-                            >
-                              <span>
-                                {item.quantity}x {item.product_name}
-                              </span>
-                              <span className="font-medium text-neutral-900 dark:text-neutral-100">{formatARS(item.line_total)}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </td>
-                    </tr>
-                  )}
+                  <tr className="bg-neutral-50 dark:bg-neutral-800/40">
+                    <td colSpan={8} className="px-3 py-2">
+                      {expanded === order.id && (
+                        <div className="w-full my-2 rounded-lg border border-neutral-200 bg-neutral-100 p-3 text-neutral-900 dark:border-neutral-800 dark:bg-neutral-900/60 dark:text-neutral-100">
+                          <ul className="space-y-2">
+                            {order.items.map((item, index) => {
+                              const unit = item.quantity > 0 ? item.line_total / item.quantity : item.line_total;
+                              return (
+                                <li
+                                  key={`${order.id}-${index}`}
+                                  className="flex items-center justify-between gap-3 text-xs"
+                                >
+                                  <div className="flex min-w-0 items-center gap-3">
+                                    <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded border border-neutral-200 dark:border-neutral-700">
+                                      {item.image_url ? (
+                                        <Image
+                                          src={item.image_url}
+                                          alt={item.product_name}
+                                          fill
+                                          sizes="40px"
+                                          className="object-cover"
+                                        />
+                                      ) : (
+                                        <div className="flex h-full w-full items-center justify-center bg-neutral-200 text-neutral-400 dark:bg-neutral-800 dark:text-neutral-500">
+                                          <Package size={16} />
+                                        </div>
+                                      )}
+                                    </div>
+                                    <span className="min-w-0 truncate font-medium text-neutral-900 dark:text-white">{item.product_name}</span>
+                                  </div>
+                                  <div className="flex shrink-0 items-center gap-3">
+                                    <span className="text-neutral-600 dark:text-neutral-400">
+                                      {item.quantity} un. x {formatARS(unit)}
+                                    </span>
+                                    <span className="font-medium tabular-nums text-neutral-900 dark:text-white">{formatARS(item.line_total)}</span>
+                                  </div>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
                 </Fragment>
               ))
             )}

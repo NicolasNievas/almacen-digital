@@ -5,6 +5,8 @@ import { Loader2, RefreshCw } from "lucide-react";
 import PosScreen from "@/components/admin/PosScreen";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { fetchProducts } from "@/lib/supabase/queries";
+import { calcSubtotal } from "@/lib/pricing";
+import { printTicket } from "@/lib/printTicket";
 import type { CartLine, Product } from "@/lib/types";
 
 export default function PosPage() {
@@ -50,7 +52,7 @@ export default function PosPage() {
 
   const handleCheckout = async (lines: CartLine[], customer: string, payment: string) => {
     const supabase = createClient();
-    const { error: saleError } = await supabase.rpc("create_sale", {
+    const { data, error: saleError } = await supabase.rpc("create_sale", {
       p_source: "POS",
       p_items: lines.map((l) => ({ product_id: l.product.id, quantity: l.quantity })),
       p_customer: customer || null,
@@ -58,6 +60,37 @@ export default function PosPage() {
       p_payment: payment,
     });
     if (saleError) throw saleError;
+
+    // Ticket del comprobante recién registrado (formato 80mm).
+    printTicket({
+      orderId: String(data ?? ""),
+      createdAt: new Date().toISOString(),
+      customerName: customer || undefined,
+      source: "POS",
+      paymentMethod: payment,
+      items: lines.map((l) => {
+        const p = l.product;
+        let note: string | undefined;
+        if (p.pricing_type === "TIERED" && p.pricing_tiers.length > 0) {
+          const best = [...p.pricing_tiers]
+            .sort((a, b) => b.min_quantity - a.min_quantity)
+            .find((t) => l.quantity >= t.min_quantity);
+          if (best) note = `Promo ${best.min_quantity}+ : $${Math.round(best.unit_price)} c/u`;
+        } else if (p.pricing_type === "BUNDLE" && p.bundle_size && p.bundle_price) {
+          note = `Pack Combo x${p.bundle_size}`;
+        }
+        return {
+          productName: p.name,
+          quantity: l.quantity,
+          unitPrice: p.unit_price,
+          originalUnitPrice: p.unit_price,
+          subtotal: calcSubtotal(p, l.quantity),
+          note,
+        };
+      }),
+      total: lines.reduce((acc, l) => acc + calcSubtotal(l.product, l.quantity), 0),
+      originalTotal: lines.reduce((acc, l) => acc + l.product.unit_price * l.quantity, 0),
+    });
   };
 
   return (

@@ -13,6 +13,7 @@ type Props = {
 
 export default function StockPanel({ initial, onSave }: Props) {
   const [items, setItems] = useState(initial);
+  const [query, setQuery] = useState("");
 
   const update = async (id: string, patch: Partial<Pick<Product, "stock" | "unit_price" | "active">>) => {
     const prev = items;
@@ -23,14 +24,27 @@ export default function StockPanel({ initial, onSave }: Props) {
   const inputClass =
     "rounded border border-neutral-300 bg-white text-neutral-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100";
 
+  const filtered = items.filter((p) =>
+    query.trim() === "" ? true : p.name.toLowerCase().includes(query.trim().toLowerCase()),
+  );
+
   return (
     <div className="overflow-x-auto p-4">
+      <div className="mb-3 flex items-center gap-2">
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Buscar por nombre..."
+          className={`${inputClass} w-full max-w-xs p-2 text-sm`}
+        />
+      </div>
       <table className="w-full min-w-[640px] text-sm">
         <thead className="text-left text-neutral-500 dark:text-neutral-400">
           <tr><th className="p-2">Producto</th><th>Stock</th><th>Precio unitario</th><th>Venta</th></tr>
         </thead>
         <tbody>
-          {items.map((p) => {
+          {filtered.map((p) => {
             const low = p.stock < LOW_STOCK;
             return (
               <tr key={p.id} className={`border-t border-neutral-200 dark:border-neutral-800 ${!p.active ? "opacity-50" : ""}`}>

@@ -72,22 +72,22 @@ export default function StockPage() {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-neutral-900 dark:text-neutral-100">Stock</h1>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">
-            Control rápido de existencias, precios y disponibilidad de productos en góndola.
-          </p>
+      <div className="space-y-4">
+        <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+          <div>
+            <h1 className="text-xl font-bold text-neutral-900 dark:text-neutral-100">Stock</h1>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">
+              Control rápido de existencias, precios y disponibilidad de productos en góndola.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => configured && void load()}
+            className="flex shrink-0 items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-sm text-neutral-600 hover:text-neutral-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:text-white"
+          >
+            <RefreshCw size={14} /> Actualizar
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={() => configured && void load()}
-          className="flex shrink-0 items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-sm text-neutral-600 hover:text-neutral-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:text-white"
-        >
-          <RefreshCw size={14} /> Actualizar
-        </button>
-      </div>
 
       {error && <p className="rounded bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">{error}</p>}
 

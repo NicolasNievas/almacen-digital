@@ -137,7 +137,7 @@ export async function fetchOrdersWithItems(): Promise<OrderWithItems[]> {
   const { data, error } = await supabase
     .from("orders")
     .select(
-      "id, source, customer_name, pickup_time, payment_method, total, status, created_at, order_items(quantity, line_total, products(name))",
+      "id, source, customer_name, pickup_time, payment_method, total, status, created_at, order_items(quantity, line_total, products(name, image_url))",
     )
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -146,11 +146,16 @@ export async function fetchOrdersWithItems(): Promise<OrderWithItems[]> {
     return {
       ...normalizeOrder(r),
       items: (r.order_items ?? []).map((raw) => {
-        const it = raw as { quantity?: unknown; line_total?: unknown; products?: { name?: unknown } | null };
+        const it = raw as {
+          quantity?: unknown;
+          line_total?: unknown;
+          products?: { name?: unknown; image_url?: unknown } | null;
+        };
         return {
           quantity: Number(it.quantity ?? 0),
           line_total: Number(it.line_total ?? 0),
           product_name: it.products?.name == null ? "—" : String(it.products.name),
+          image_url: it.products?.image_url == null ? null : String(it.products.image_url),
         };
       }),
     };

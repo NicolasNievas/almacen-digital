@@ -71,6 +71,7 @@ export type OrderItemRow = {
   quantity: number;
   line_total: number;
   product_name: string;
+  image_url?: string | null;
 };
 
 export type OrderWithItems = Order & { items: OrderItemRow[] };
