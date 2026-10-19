@@ -1,9 +1,10 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Minus, Plus, Trash2, X, MessageCircle } from "lucide-react";
 import type { CartLine } from "@/lib/types";
 import { calcSubtotal, calcSavings, formatARS } from "@/lib/pricing";
 import { buildWhatsAppUrl, type Checkout } from "@/lib/whatsapp";
+import { formatRanges, getPickupInfo } from "@/lib/schedule";
 
 type Props = {
   open: boolean;
@@ -20,10 +21,18 @@ export default function Cart({ open, onClose, lines, onChangeQty, store, onConfi
   const [pickupTime, setPickupTime] = useState("");
   const [payment, setPayment] = useState<Checkout["payment"]>("Efectivo");
 
+  // Se recalcula cada vez que se abre el carrito para reflejar la hora actual.
+  const pickupInfo = useMemo(() => (open ? getPickupInfo() : null), [open]);
+  const slots = pickupInfo?.slots ?? [];
+  const ranges = pickupInfo?.ranges ?? [];
+  const currentlyOpen = pickupInfo?.currentlyOpen ?? false;
+  const dayLabel = pickupInfo?.dayLabel ?? "";
+  const isToday = pickupInfo?.isToday ?? true;
+  const selectedTime = slots.includes(pickupTime) ? pickupTime : slots[0] ?? "";
+
   const total = useMemo(() => lines.reduce((a, l) => a + calcSubtotal(l.product, l.quantity), 0), [lines]);
   const savings = useMemo(() => lines.reduce((a, l) => a + calcSavings(l.product, l.quantity), 0), [lines]);
-  const canSend =
-    lines.length > 0 && name.trim().length > 0 && /^\d{2}:\d{2}(:\d{2})?$/.test(pickupTime);
+  const canSend = lines.length > 0 && name.trim().length > 0 && selectedTime !== "";
 
   // Verifica stock antes de incrementar
   const increment = (l: CartLine) => {
@@ -33,11 +42,21 @@ export default function Cart({ open, onClose, lines, onChangeQty, store, onConfi
 
   const confirm = () => {
     if (!canSend) return;
-    const checkout: Checkout = { name: name.trim(), pickupTime, payment };
+    const checkout: Checkout = { name: name.trim(), pickupTime: selectedTime, payment };
     // Abrimos WhatsApp primero (sincrónico) para que el navegador no bloquee el popup.
     window.open(buildWhatsAppUrl(store.whatsapp, lines, checkout), "_blank");
     void onConfirm?.(checkout, lines);
   };
+
+  // Bloquea el scroll de la página de fondo mientras el carrito está abierto.
+  useEffect(() => {
+    if (!open) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous || "unset";
+    };
+  }, [open]);
 
   if (!open) return null;
   return (
@@ -46,14 +65,14 @@ export default function Cart({ open, onClose, lines, onChangeQty, store, onConfi
         className="flex h-full w-full max-w-md flex-col bg-white dark:bg-neutral-900"
         onClick={(e) => e.stopPropagation()}
       >
-        <header className="flex items-center justify-between border-b border-neutral-200 p-4 dark:border-neutral-800">
+        <header className="flex flex-none items-center justify-between border-b border-neutral-200 p-4 dark:border-neutral-800">
           <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">Tu pedido</h2>
           <button onClick={onClose} aria-label="Cerrar" className="text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white">
             <X />
           </button>
         </header>
 
-        <div className="flex-1 space-y-3 overflow-y-auto p-4">
+        <div className="flex-1 min-h-0 space-y-3 overflow-y-auto overscroll-contain p-4">
           {lines.length === 0 && <p className="text-neutral-500 dark:text-neutral-400">Todavía no agregaste productos.</p>}
           {lines.map((l) => {
             const atMax = l.quantity >= l.product.stock;
@@ -79,7 +98,7 @@ export default function Cart({ open, onClose, lines, onChangeQty, store, onConfi
           })}
         </div>
 
-        <footer className="space-y-3 border-t border-neutral-200 p-4 dark:border-neutral-800">
+        <footer className="flex-none space-y-3 border-t border-neutral-200 p-4 dark:border-neutral-800">
           {savings > 0 && <p className="text-sm text-green-700 dark:text-green-400">Ahorrás {formatARS(savings)} con las promos</p>}
           <input
             className="w-full rounded border border-neutral-300 bg-white p-2 text-neutral-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
@@ -89,14 +108,31 @@ export default function Cart({ open, onClose, lines, onChangeQty, store, onConfi
           />
           <label className="block space-y-1">
             <span className="text-xs text-neutral-500 dark:text-neutral-400">Horario de retiro *</span>
-            <input
-              type="time"
+            <select
               required
-              className="w-full rounded border border-neutral-300 bg-white p-2 text-neutral-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
-              value={pickupTime}
+              className="w-full rounded border border-neutral-300 bg-white p-2 text-neutral-900 disabled:opacity-60 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+              value={selectedTime}
               onChange={(e) => setPickupTime(e.target.value)}
-            />
+              disabled={slots.length === 0}
+            >
+              {slots.length === 0 && <option value="">Sin horarios disponibles</option>}
+              {slots.map((slot) => (
+                <option key={slot} value={slot}>
+                  {isToday ? slot : `${dayLabel} ${slot}`}
+                </option>
+              ))}
+            </select>
           </label>
+          {!currentlyOpen && (
+            <p className="rounded bg-amber-50 p-2 text-xs text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+              El local se encuentra cerrado.{" "}
+              {slots.length === 0
+                ? "No hay horarios de retiro disponibles en este momento."
+                : isToday
+                  ? `Seleccioná un horario dentro de nuestras franjas de atención: ${formatRanges(ranges)}.`
+                  : `Podés retirar ${dayLabel} dentro de nuestras franjas de atención: ${formatRanges(ranges)}.`}
+            </p>
+          )}
           <select
             className="w-full rounded border border-neutral-300 bg-white p-2 text-neutral-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
             value={payment}
