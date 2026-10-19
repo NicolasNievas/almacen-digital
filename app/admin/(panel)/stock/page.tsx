@@ -9,6 +9,8 @@ import type { Product } from "@/lib/types";
 
 type Patch = Partial<Pick<Product, "stock" | "unit_price" | "active">>;
 
+const LOW_STOCK = 5;
+
 export default function StockPage() {
   const configured = isSupabaseConfigured();
   const [products, setProducts] = useState<Product[]>([]);
@@ -71,6 +73,8 @@ export default function StockPage() {
     }
   };
 
+  const critical = products.filter((p) => p.stock < LOW_STOCK).sort((a, b) => a.stock - b.stock);
+
   return (
       <div className="space-y-4">
         <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
@@ -100,8 +104,27 @@ export default function StockPage() {
           <Loader2 className="h-5 w-5 animate-spin" /> Cargando productos...
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
-          <StockPanel key={version} initial={products} onSave={handleSave} />
+        <div className="space-y-4">
+          {critical.length > 0 && (
+            <section className="rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-900/60 dark:bg-amber-950/30">
+              <h2 className="border-b border-amber-200 p-4 text-sm font-semibold text-amber-900 dark:border-amber-900/60 dark:text-amber-200">
+                Reposición sugerida · {critical.length} producto(s) con stock crítico
+              </h2>
+              <ul className="divide-y divide-amber-200/70 dark:divide-amber-900/50">
+                {critical.slice(0, 8).map((p) => (
+                  <li key={p.id} className="flex items-center justify-between p-3 text-sm">
+                    <span className="font-medium text-neutral-900 dark:text-neutral-100">{p.name}</span>
+                    <span className={p.stock === 0 ? "text-red-600 dark:text-red-400" : "text-amber-700 dark:text-amber-400"}>
+                      {p.stock === 0 ? "Agotado" : `${p.stock} unidades`}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+          <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+            <StockPanel key={version} initial={products} onSave={handleSave} />
+          </div>
         </div>
       )}
     </div>

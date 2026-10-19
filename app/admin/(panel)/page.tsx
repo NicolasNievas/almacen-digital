@@ -1,25 +1,45 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Boxes, DollarSign, Loader2, Receipt, RefreshCw, TrendingUp } from "lucide-react";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
-import { fetchOrders, fetchProducts } from "@/lib/supabase/queries";
+import { fetchCategories, fetchOrdersWithItems, fetchProducts } from "@/lib/supabase/queries";
 import { formatARS } from "@/lib/pricing";
-import type { Order, Product } from "@/lib/types";
-
-const LOW_STOCK = 5;
+import {
+  filterByRange,
+  inventoryByCategory,
+  paymentBreakdown,
+  RANGES,
+  salesSeries,
+  topProducts,
+  type RangeKey,
+} from "@/lib/metrics";
+import {
+  InventoryByCategoryChart,
+  PaymentMethodsChart,
+  SalesBySourceChart,
+  TopProductsChart,
+} from "@/components/admin/MetricsCharts";
+import type { Category, OrderWithItems, Product } from "@/lib/types";
 
 export default function PanelHomePage() {
   const configured = isSupabaseConfigured();
   const [products, setProducts] = useState<Product[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [orders, setOrders] = useState<OrderWithItems[]>([]);
+  const [range, setRange] = useState<RangeKey>("week");
   const [loading, setLoading] = useState(configured);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const [productos, pedidos] = await Promise.all([fetchProducts(), fetchOrders()]);
+      const [productos, categorias, pedidos] = await Promise.all([
+        fetchProducts(),
+        fetchCategories(),
+        fetchOrdersWithItems(),
+      ]);
       setProducts(productos);
+      setCategories(categorias);
       setOrders(pedidos);
       setError(null);
     } catch (err) {
@@ -34,9 +54,14 @@ export default function PanelHomePage() {
     let active = true;
     (async () => {
       try {
-        const [productos, pedidos] = await Promise.all([fetchProducts(), fetchOrders()]);
+        const [productos, categorias, pedidos] = await Promise.all([
+          fetchProducts(),
+          fetchCategories(),
+          fetchOrdersWithItems(),
+        ]);
         if (active) {
           setProducts(productos);
+          setCategories(categorias);
           setOrders(pedidos);
           setError(null);
         }
@@ -51,26 +76,30 @@ export default function PanelHomePage() {
     };
   }, [configured]);
 
-  const completed = orders.filter((o) => o.status === "COMPLETED");
+  const completedInRange = useMemo(
+    () => filterByRange(orders, range).filter((o) => o.status === "COMPLETED"),
+    [orders, range],
+  );
+
+  const revenue = completedInRange.reduce((acc, o) => acc + o.total, 0);
+  const webCount = completedInRange.filter((o) => o.source === "WEB").length;
+  const posCount = completedInRange.filter((o) => o.source === "POS").length;
+  const avgTicket = completedInRange.length > 0 ? revenue / completedInRange.length : 0;
   const pending = orders.filter((o) => o.status === "PENDING").length;
-  const revenue = completed.reduce((acc, o) => acc + o.total, 0);
-  const webCount = completed.filter((o) => o.source === "WEB").length;
-  const posCount = completed.filter((o) => o.source === "POS").length;
-  const avgTicket = completed.length > 0 ? revenue / completed.length : 0;
 
   const inventoryValue = products.reduce((acc, p) => acc + p.stock * p.unit_price, 0);
 
   const cards = [
     {
-      label: "Ingresos totales",
+      label: "Ingresos del período",
       value: formatARS(revenue),
       hint: `${webCount} web · ${posCount} POS`,
       icon: TrendingUp,
     },
     {
-      label: "Pedidos",
-      value: String(completed.length),
-      hint: pending > 0 ? `${pending} pendiente(s)` : "completados",
+      label: "Pedidos completados",
+      value: String(completedInRange.length),
+      hint: pending > 0 ? `${pending} pendiente(s)` : "sin pendientes",
       icon: Receipt,
     },
     { label: "Ticket promedio", value: formatARS(avgTicket), hint: "por pedido", icon: DollarSign },
@@ -82,7 +111,10 @@ export default function PanelHomePage() {
     },
   ];
 
-  const critical = products.filter((p) => p.stock < LOW_STOCK).sort((a, b) => a.stock - b.stock);
+  const topProductsData = useMemo(() => topProducts(completedInRange), [completedInRange]);
+  const paymentData = useMemo(() => paymentBreakdown(completedInRange), [completedInRange]);
+  const inventoryData = useMemo(() => inventoryByCategory(products, categories), [products, categories]);
+  const salesData = useMemo(() => salesSeries(completedInRange, range), [completedInRange, range]);
 
   return (
     <div className="space-y-6">
@@ -93,13 +125,15 @@ export default function PanelHomePage() {
             Resumen ejecutivo de ingresos, volumen de ventas y estado general del inventario.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => configured && void load()}
-          className="flex shrink-0 items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-sm text-neutral-600 hover:text-neutral-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:text-white"
-        >
-          <RefreshCw size={14} /> Actualizar
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => configured && void load()}
+            className="flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-sm text-neutral-600 hover:text-neutral-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:text-white"
+          >
+            <RefreshCw size={14} /> Actualizar
+          </button>
+        </div>
       </div>
 
       {error && <p className="rounded bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">{error}</p>}
@@ -116,7 +150,10 @@ export default function PanelHomePage() {
         <>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {cards.map((card) => (
-              <div key={card.label} className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+              <div
+                key={card.label}
+                className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900"
+              >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">{card.label}</span>
                   <card.icon size={18} className="text-brand" />
@@ -126,26 +163,30 @@ export default function PanelHomePage() {
               </div>
             ))}
           </div>
-
-          <section className="rounded-xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
-            <h2 className="border-b border-neutral-200 p-4 text-base font-semibold text-neutral-900 dark:border-neutral-800 dark:text-neutral-100">
-              Reposición sugerida
-            </h2>
-            {critical.length === 0 ? (
-              <p className="p-4 text-sm text-neutral-500 dark:text-neutral-400">No hay productos con stock crítico.</p>
-            ) : (
-              <ul className="divide-y divide-neutral-100 dark:divide-neutral-800">
-                {critical.map((p) => (
-                  <li key={p.id} className="flex items-center justify-between p-4 text-sm">
-                    <span className="font-medium text-neutral-900 dark:text-neutral-100">{p.name}</span>
-                    <span className={p.stock === 0 ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-400"}>
-                      {p.stock === 0 ? "Agotado" : `${p.stock} unidades`}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
+          <div className="flex justify-start">
+            <div className="inline-flex rounded-lg border border-neutral-200 bg-white p-1 dark:border-neutral-800 dark:bg-neutral-900">
+              {RANGES.map((option) => (
+                <button
+                  key={option.key}
+                  type="button"
+                  onClick={() => setRange(option.key)}
+                  className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+                    range === option.key
+                      ? "bg-brand-solid text-white"
+                      : "text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <TopProductsChart data={topProductsData} />
+            <PaymentMethodsChart data={paymentData} />
+            <InventoryByCategoryChart data={inventoryData} />
+            <SalesBySourceChart data={salesData} />
+          </div>
         </>
       )}
     </div>

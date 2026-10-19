@@ -53,6 +53,22 @@ export async function fetchCatalog(): Promise<{ categories: Category[]; products
   };
 }
 
+/** Todas las categorías (público, sin depender de productos activos). */
+export async function fetchCategories(): Promise<Category[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("categories")
+    .select("id, name, sort_order")
+    .order("sort_order", { ascending: true })
+    .order("name", { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map((c) => ({
+    id: String(c.id),
+    name: String(c.name),
+    sort_order: Number(c.sort_order ?? 0),
+  })) as Category[];
+}
+
 /** Todos los productos (incluye pausados). Requiere sesión admin por RLS. */
 export async function fetchProducts(): Promise<Product[]> {
   const supabase = createClient();

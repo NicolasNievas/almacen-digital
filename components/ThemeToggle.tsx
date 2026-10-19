@@ -1,30 +1,11 @@
 "use client";
 
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback } from "react";
 import { Moon, Sun } from "lucide-react";
-
-const THEME_EVENT = "theme-change";
-
-function subscribe(callback: () => void) {
-  window.addEventListener(THEME_EVENT, callback);
-  const media = window.matchMedia("(prefers-color-scheme: dark)");
-  media.addEventListener("change", callback);
-  return () => {
-    window.removeEventListener(THEME_EVENT, callback);
-    media.removeEventListener("change", callback);
-  };
-}
-
-function getSnapshot(): "dark" | "light" {
-  return document.documentElement.classList.contains("dark") ? "dark" : "light";
-}
-
-function getServerSnapshot(): "dark" | "light" {
-  return "light";
-}
+import { THEME_EVENT, useTheme } from "@/lib/theme";
 
 export default function ThemeToggle() {
-  const theme = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const theme = useTheme();
 
   const toggle = useCallback(() => {
     const root = document.documentElement;

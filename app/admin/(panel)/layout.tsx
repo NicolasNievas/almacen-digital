@@ -39,8 +39,8 @@ export default async function PanelLayout({ children }: { children: ReactNode })
   await requireAdmin();
 
   return (
-    <div className="flex flex-1 flex-col bg-neutral-50 dark:bg-neutral-950">
-      <header className="border-b border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+    <div className="flex flex-1 flex-col bg-neutral-50 print:bg-white dark:bg-neutral-950">
+      <header className="border-b border-neutral-200 bg-white print:hidden dark:border-neutral-800 dark:bg-neutral-900">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
           <Link href="/admin" className="flex items-center gap-2.5">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-solid text-white">
@@ -67,7 +67,7 @@ export default async function PanelLayout({ children }: { children: ReactNode })
         <AdminNav />
       </header>
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">{children}</main>
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 print:max-w-none print:px-0 print:py-0">{children}</main>
     </div>
   );
 }

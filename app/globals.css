@@ -9,6 +9,10 @@
   --brand: #1e40af;
   --brand-solid: #1e40af;
   --brand-accent: #2563eb;
+  /* Tokens de gráficos (recharts) — tema claro */
+  --chart-axis: #64748b;
+  --chart-grid: #e2e8f0;
+  --chart-label: #334155;
 }
 
 .dark {
@@ -17,6 +21,10 @@
   --brand: #93c5fd;
   --brand-solid: #2563eb;
   --brand-accent: #3b82f6;
+  /* Tokens de gráficos (recharts) — tema oscuro */
+  --chart-axis: #a1a1aa;
+  --chart-grid: #27272a;
+  --chart-label: #e4e4e7;
 }
 
 @theme inline {
@@ -33,4 +41,25 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+@media print {
+  .dark,
+  :root {
+    --background: #ffffff;
+    --foreground: #0f172a;
+    --chart-axis: #475569;
+    --chart-grid: #cbd5e1;
+    --chart-label: #1e293b;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  @page {
+    margin: 12mm;
+  }
 }
