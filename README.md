@@ -1,36 +1,123 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Nexo Commerce · SaaS multitenant
 
-## Getting Started
+Plataforma de gestión y e-commerce para distintos tipos de comercio. Una sola
+base de datos y un solo código sirven múltiples tiendas; cada tienda define su
+experiencia desde `stores.settings` (JSONB).
 
-First, run the development server:
+## Demos incluidos
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+| Tienda | Slug | Rubro | Checkout |
+| --- | --- | --- | --- |
+| AG Mayorista | `/ag-mayorista` | Mayorista / almacén | WhatsApp |
+| Rotisería Express | `/rotiseria-express` | Gastronomía | WhatsApp |
+| Aura Studio | `/aura-studio` | Indumentaria | Mercado Pago (+ fallback WhatsApp) |
+
+La landing corporativa está en `/` y el panel de administración en `/admin`.
+
+## Puesta en marcha
+
+1. Instalar dependencias:
+
+   ```bash
+   npm install
+   ```
+
+2. Copiar `.env.local.example` a `.env.local` y completar:
+
+   ```env
+   NEXT_PUBLIC_SUPABASE_URL=...
+   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
+   NEXT_PUBLIC_ADMIN_STORE_SLUG=ag-mayorista
+   NEXT_PUBLIC_SITE_URL=http://localhost:3000
+   MERCADO_PAGO_ACCESS_TOKEN=... # opcional
+   ```
+
+3. En el **SQL Editor de Supabase**, ejecutar las migraciones en orden si la
+   base es nueva:
+
+   ```text
+   supabase/schema.sql
+   supabase/002_web_orders_pending.sql
+   supabase/003_pos_pickup_time.sql
+   supabase/004_pos_pickup_null.sql
+   supabase/005_fix_security_grants.sql
+   supabase/006_multitenant_saas.sql   <-- arquitectura SaaS
+   ```
+
+   Si la base ya existía con las migraciones 001–005, ejecutar **solo**
+   `supabase/006_multitenant_saas.sql`. El script es idempotente y crea:
+
+   - `stores` (tenant principal) con `settings` JSONB.
+   - `store_id` en `categories`, `products`, `orders`, `order_items` y
+     `stock_logs`, con backfill a AG Mayorista.
+   - PK compuesta `(store_id, id)` en categorías y FK compuesta en productos.
+   - Variantes/galería (`sizes`, `colors`, `images`) y datos de entrega.
+   - RPCs tenant-aware (`create_sale`, `create_web_order`) y RLS por tienda.
+   - Las 3 tiendas demo con catálogo de ejemplo.
+
+4. Iniciar el proyecto:
+
+   ```bash
+   npm run dev
+   ```
+
+## Estructura de `stores.settings`
+
+```json
+{
+  "business_type": "MAYORISTA",
+  "checkout_type": "WHATSAPP",
+  "fulfillment": {
+    "shipping_enabled": false,
+    "pickup_enabled": true
+  },
+  "features": {
+    "variants_enabled": false,
+    "gallery_enabled": false,
+    "pos_enabled": true,
+    "stock_alerts": true,
+    "custom_notes": false
+  }
+}
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Valores permitidos:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `business_type`: `MAYORISTA` | `GASTRONOMY` | `CLOTHING`
+- `checkout_type`: `WHATSAPP` | `MERCADO_PAGO`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+La UI se adapta automáticamente:
 
-## Learn More
+- **CLOTHING**: selector de talle/color y galería con múltiples imágenes.
+- **GASTRONOMY**: notas por ítem y elección Delivery / Takeaway.
+- **MAYORISTA**: packs, escalones de precio y retiro en local.
+- **WHATSAPP**: arma el desglose completo y abre `wa.me`.
+- **MERCADO_PAGO**: crea la preferencia en
+  `/api/mercadopago/preference` (server-side) y redirige al checkout.
 
-To learn more about Next.js, take a look at the following resources:
+## Rutas principales
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```text
+/                       Landing corporativa
+/[storeSlug]            Tienda dinámica (settings-driven)
+/[storeSlug] 404        Vista personalizada si el slug no existe
+/admin                  Panel (métricas, productos, stock, POS, pedidos)
+/api/mercadopago/...    Creación de preferencia de pago
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Scripts
 
-## Deploy on Vercel
+```bash
+npm run dev      # desarrollo
+npm run build    # build de producción
+npm run start    # servir el build
+npm run lint     # ESLint
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Notas de seguridad
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- El catálogo público solo lee tiendas activas y productos activos.
+- `orders`, `order_items` y `stock_logs` quedan solo para administradores.
+- `create_sale` exige rol admin y una tienda válida; los pedidos web entran
+  como `PENDING` y el stock se descuenta al confirmarlos desde el panel.
+- El access token de Mercado Pago nunca se expone al navegador.
