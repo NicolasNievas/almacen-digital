@@ -6,8 +6,11 @@ const nextConfig: NextConfig = {
   partialPrefetching: false, // Habilitarlo solo si cacheComponents: true
 
   images: {
-    // Solo Cloudinary: evita usar el optimizador como proxy de imágenes abierto.
-    remotePatterns: [{ protocol: "https", hostname: "res.cloudinary.com", pathname: "/**" }],
+    // Cloudinary para uploads del panel + Unsplash para el catálogo demo.
+    remotePatterns: [
+      { protocol: "https", hostname: "res.cloudinary.com", pathname: "/**" },
+      { protocol: "https", hostname: "images.unsplash.com", pathname: "/**" },
+    ],
   },
   turbopack: {
     rules: {

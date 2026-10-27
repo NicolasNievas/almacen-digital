@@ -14,9 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AG Mayorista · Ventas por mayor y menor",
+  title: "Nexo Commerce · Software de gestión y e-commerce",
   description:
-    "Catálogo online de AG Mayorista: ventas por mayor y menor, pedidos por WhatsApp y panel de administración.",
+    "SaaS multitenant para comercios: catálogo online, POS, stock en tiempo real, métricas y checkout por WhatsApp o Mercado Pago.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
