@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ClipboardList, LayoutDashboard, Package, ShoppingCart, Tags } from "lucide-react";
+import { buildAdminHref } from "@/lib/admin-store";
 
 const nav = [
   { href: "/admin", label: "Métricas", icon: LayoutDashboard },
@@ -12,7 +13,7 @@ const nav = [
   { href: "/admin/pedidos", label: "Pedidos", icon: ClipboardList },
 ];
 
-export default function AdminNav() {
+export default function AdminNav({ storeSlug }: { storeSlug: string }) {
   const pathname = usePathname();
 
   return (
@@ -22,7 +23,7 @@ export default function AdminNav() {
         return (
           <Link
             key={item.href}
-            href={item.href}
+            href={buildAdminHref(item.href, storeSlug)}
             aria-current={active ? "page" : undefined}
             className={`flex items-center gap-2 whitespace-nowrap border-b-2 px-3 py-2 text-sm transition-colors ${
               active

@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Loader2, RefreshCw } from "lucide-react";
 import StockPanel from "@/components/admin/StockPanel";
+import { ADMIN_STORE_PARAM, resolveAdminStoreSlug } from "@/lib/admin-store";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { fetchAdminStore, fetchProducts } from "@/lib/supabase/queries";
 import type { Product } from "@/lib/types";
@@ -13,15 +15,18 @@ const LOW_STOCK = 5;
 
 export default function StockPage() {
   const configured = isSupabaseConfigured();
+  const searchParams = useSearchParams();
+  const storeSlug = resolveAdminStoreSlug(searchParams.get(ADMIN_STORE_PARAM));
   const [products, setProducts] = useState<Product[]>([]);
   const [storeId, setStoreId] = useState("");
   const [version, setVersion] = useState(0);
-  const [loading, setLoading] = useState(configured);
+  const [loadedSlug, setLoadedSlug] = useState<string | null>(null);
+  const loading = loadedSlug !== storeSlug;
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const store = await fetchAdminStore();
+      const store = await fetchAdminStore(storeSlug);
       setStoreId(store.id);
       setProducts(await fetchProducts(store.id));
       setVersion((v) => v + 1);
@@ -29,16 +34,16 @@ export default function StockPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudieron cargar los productos.");
     } finally {
-      setLoading(false);
+      setLoadedSlug(storeSlug);
     }
-  }, []);
+  }, [storeSlug]);
 
   useEffect(() => {
     if (!configured) return;
     let active = true;
     (async () => {
       try {
-        const store = await fetchAdminStore();
+        const store = await fetchAdminStore(storeSlug);
         const data = await fetchProducts(store.id);
         if (active) {
           setStoreId(store.id);
@@ -49,13 +54,13 @@ export default function StockPage() {
       } catch (err) {
         if (active) setError(err instanceof Error ? err.message : "No se pudieron cargar los productos.");
       } finally {
-        if (active) setLoading(false);
+        if (active) setLoadedSlug(storeSlug);
       }
     })();
     return () => {
       active = false;
     };
-  }, [configured]);
+  }, [configured, storeSlug]);
 
   const handleSave = async (id: string, patch: Patch) => {
     const supabase = createClient();

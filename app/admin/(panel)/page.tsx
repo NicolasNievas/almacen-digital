@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Boxes, DollarSign, Loader2, Receipt, RefreshCw, TrendingUp } from "lucide-react";
+import { ADMIN_STORE_PARAM, resolveAdminStoreSlug } from "@/lib/admin-store";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import {
   fetchAdminStore,
@@ -29,16 +31,19 @@ import type { Category, OrderWithItems, Product } from "@/lib/types";
 
 export default function PanelHomePage() {
   const configured = isSupabaseConfigured();
+  const searchParams = useSearchParams();
+  const storeSlug = resolveAdminStoreSlug(searchParams.get(ADMIN_STORE_PARAM));
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [range, setRange] = useState<RangeKey>("week");
-  const [loading, setLoading] = useState(configured);
+  const [loadedSlug, setLoadedSlug] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const loading = loadedSlug !== storeSlug;
 
   const load = useCallback(async () => {
     try {
-      const store = await fetchAdminStore();
+      const store = await fetchAdminStore(storeSlug);
       const [productos, categorias, pedidos] = await Promise.all([
         fetchProducts(store.id),
         fetchCategories(store.id),
@@ -51,16 +56,16 @@ export default function PanelHomePage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudieron cargar las métricas.");
     } finally {
-      setLoading(false);
+      setLoadedSlug(storeSlug);
     }
-  }, []);
+  }, [storeSlug]);
 
   useEffect(() => {
     if (!configured) return;
     let active = true;
     (async () => {
       try {
-        const store = await fetchAdminStore();
+        const store = await fetchAdminStore(storeSlug);
         const [productos, categorias, pedidos] = await Promise.all([
           fetchProducts(store.id),
           fetchCategories(store.id),
@@ -75,13 +80,13 @@ export default function PanelHomePage() {
       } catch (err) {
         if (active) setError(err instanceof Error ? err.message : "No se pudieron cargar las métricas.");
       } finally {
-        if (active) setLoading(false);
+        if (active) setLoadedSlug(storeSlug);
       }
     })();
     return () => {
       active = false;
     };
-  }, [configured]);
+  }, [configured, storeSlug]);
 
   const completedInRange = useMemo(
     () => filterByRange(orders, range).filter((o) => o.status === "COMPLETED"),

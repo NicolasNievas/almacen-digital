@@ -1,8 +1,11 @@
 import { cache } from "react";
 import { normalizeStore } from "./mappers";
 import { createPublicClient } from "./public";
-import { DEFAULT_ADMIN_STORE_SLUG } from "../store";
+import { resolveAdminStoreSlug } from "../admin-store";
 import type { Store } from "../types";
+
+const STORE_COLUMNS =
+  "id, slug, name, subtitle, slogan, whatsapp, alias, cbu, titular, settings, active";
 
 /**
  * Lecturas de tienda para Server Components. `cache()` deduplica la consulta
@@ -14,9 +17,7 @@ export const getStoreBySlug = cache(async (slug: string): Promise<Store | null> 
 
   const { data, error } = await supabase
     .from("stores")
-    .select(
-      "id, slug, name, subtitle, slogan, whatsapp, alias, cbu, titular, settings, active",
-    )
+    .select(STORE_COLUMNS)
     .eq("slug", slug)
     .eq("active", true)
     .maybeSingle();
@@ -28,21 +29,23 @@ export const getStoreBySlug = cache(async (slug: string): Promise<Store | null> 
   return data ? normalizeStore(data as Record<string, unknown>) : null;
 });
 
-/** Tienda que gestiona el panel admin (definida por entorno o la primera activa). */
-export const getAdminStore = cache(async (): Promise<Store | null> => {
-  const configured = await getStoreBySlug(DEFAULT_ADMIN_STORE_SLUG);
-  if (configured) return configured;
+/**
+ * Tienda que gestiona el panel admin. La fuente principal es el query param
+ * `?store=`; si no llega, se usa `NEXT_PUBLIC_ADMIN_STORE_SLUG` y por último la
+ * primera tienda activa.
+ */
+export const getAdminStore = cache(async (slug?: string): Promise<Store | null> => {
+  const preferred = await getStoreBySlug(resolveAdminStoreSlug(slug));
+  if (preferred) return preferred;
 
   const supabase = createPublicClient();
   if (!supabase) return null;
 
   const { data, error } = await supabase
     .from("stores")
-    .select(
-      "id, slug, name, subtitle, slogan, whatsapp, alias, cbu, titular, settings, active",
-    )
+    .select(STORE_COLUMNS)
     .eq("active", true)
-    .order("created_at", { ascending: true })
+    .order("name", { ascending: true })
     .limit(1)
     .maybeSingle();
 
@@ -53,16 +56,14 @@ export const getAdminStore = cache(async (): Promise<Store | null> => {
   return data ? normalizeStore(data as Record<string, unknown>) : null;
 });
 
-/** Listado público de tiendas activas (útil para landings o directorios). */
+/** Listado público de tiendas activas (selector del panel, landings, directorios). */
 export const listStores = cache(async (): Promise<Store[]> => {
   const supabase = createPublicClient();
   if (!supabase) return [];
 
   const { data, error } = await supabase
     .from("stores")
-    .select(
-      "id, slug, name, subtitle, slogan, whatsapp, alias, cbu, titular, settings, active",
-    )
+    .select(STORE_COLUMNS)
     .eq("active", true)
     .order("name", { ascending: true });
 

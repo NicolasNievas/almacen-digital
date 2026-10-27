@@ -95,6 +95,25 @@ La UI se adapta automáticamente:
 - **MERCADO_PAGO**: crea la preferencia en
   `/api/mercadopago/preference` (server-side) y redirige al checkout.
 
+## Panel de administración
+
+El panel opera sobre **una tienda a la vez**. La tienda activa vive en la URL
+(`?store=slug`), así que se puede compartir el enlace de una sección con la
+tienda ya seleccionada:
+
+```text
+/admin?store=aura-studio
+/admin/productos?store=rotiseria-express
+/admin/pos?store=ag-mayorista
+```
+
+- El selector del header lista todas las tiendas activas de `stores`
+  (`lib/supabase/stores.ts` → `listStores`).
+- Al cambiarlo, se reescribe el parámetro y métricas, productos, stock, POS y
+  pedidos vuelven a consultar filtrando por ese `store_id`.
+- Si la URL no trae `?store=`, se usa `NEXT_PUBLIC_ADMIN_STORE_SLUG`
+  (`ag-mayorista` por defecto) y, si esa tienda no existe, la primera activa.
+
 ## Rutas principales
 
 ```text

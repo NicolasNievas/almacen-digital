@@ -1,8 +1,10 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { Check, ChevronLeft, ChevronRight, ClipboardList, Loader2, Package, Printer, RefreshCw, X } from "lucide-react";
+import { ADMIN_STORE_PARAM, resolveAdminStoreSlug } from "@/lib/admin-store";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { fetchAdminStore, fetchOrdersWithItems, fetchProducts } from "@/lib/supabase/queries";
 import { printTicket, type TicketItem } from "@/lib/printTicket";
@@ -83,13 +85,20 @@ function printOrderTicket(order: OrderWithItems, productsByName: Map<string, Pro
 
 export default function PedidosPage() {
   const configured = isSupabaseConfigured();
+  const searchParams = useSearchParams();
+  const storeSlug = resolveAdminStoreSlug(searchParams.get(ADMIN_STORE_PARAM));
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(configured);
+  const [loadedSlug, setLoadedSlug] = useState<string | null>(null);
+  const loading = loadedSlug !== storeSlug;
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
+  // La página se reinicia sola al cambiar de tienda sin efectos: si el slug
+  // guardado no coincide con el activo, se usa la primera página.
+  const [pagination, setPagination] = useState({ slug: storeSlug, page: 1 });
+  const page = pagination.slug === storeSlug ? pagination.page : 1;
+  const setPage = (next: number) => setPagination({ slug: storeSlug, page: next });
 
   const productsByName = useMemo(() => {
     const map = new Map<string, Product>();
@@ -99,7 +108,7 @@ export default function PedidosPage() {
 
   const load = useCallback(async () => {
     try {
-      const store = await fetchAdminStore();
+      const store = await fetchAdminStore(storeSlug);
       const [ordersData, productsData] = await Promise.all([
         fetchOrdersWithItems(store.id),
         fetchProducts(store.id),
@@ -110,16 +119,16 @@ export default function PedidosPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudieron cargar los pedidos.");
     } finally {
-      setLoading(false);
+      setLoadedSlug(storeSlug);
     }
-  }, []);
+  }, [storeSlug]);
 
   useEffect(() => {
     if (!configured) return;
     let active = true;
     (async () => {
       try {
-        const store = await fetchAdminStore();
+        const store = await fetchAdminStore(storeSlug);
         const [ordersData, productsData] = await Promise.all([
           fetchOrdersWithItems(store.id),
           fetchProducts(store.id),
@@ -132,13 +141,13 @@ export default function PedidosPage() {
       } catch (err) {
         if (active) setError(err instanceof Error ? err.message : "No se pudieron cargar los pedidos.");
       } finally {
-        if (active) setLoading(false);
+        if (active) setLoadedSlug(storeSlug);
       }
     })();
     return () => {
       active = false;
     };
-  }, [configured]);
+  }, [configured, storeSlug]);
 
   const processOrder = async (id: string, rpc: "confirm_order" | "cancel_order") => {
     setBusyId(id);

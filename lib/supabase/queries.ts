@@ -1,14 +1,17 @@
 import { createClient } from "./client";
 import { normalizeCategory, normalizeOrder, normalizeOrderWithItems, normalizeProduct, normalizeStore } from "./mappers";
-import { DEFAULT_ADMIN_STORE_SLUG } from "../store";
+import { resolveAdminStoreSlug } from "../admin-store";
 import type { Category, Order, OrderWithItems, Product, ProductInput, Store } from "../types";
+
+const STORE_COLUMNS =
+  "id, slug, name, subtitle, slogan, whatsapp, alias, cbu, titular, settings, active";
 
 /** Tienda pública por slug (para Client Components). */
 export async function fetchStoreBySlug(slug: string): Promise<Store | null> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("stores")
-    .select("id, slug, name, subtitle, slogan, whatsapp, alias, cbu, titular, settings, active")
+    .select(STORE_COLUMNS)
     .eq("slug", slug)
     .eq("active", true)
     .maybeSingle();
@@ -17,16 +20,31 @@ export async function fetchStoreBySlug(slug: string): Promise<Store | null> {
   return data ? normalizeStore(data as Record<string, unknown>) : null;
 }
 
-/**
- * Tienda gestionada por el panel admin. Usa `NEXT_PUBLIC_ADMIN_STORE_SLUG`
- * (por defecto `ag-mayorista`) y cae a la primera tienda activa.
- */
-export async function fetchAdminStore(): Promise<Store> {
+/** Tiendas activas, ordenadas por nombre (opciones del selector del panel). */
+export async function fetchActiveStores(): Promise<Store[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("stores")
-    .select("id, slug, name, subtitle, slogan, whatsapp, alias, cbu, titular, settings, active")
-    .eq("slug", DEFAULT_ADMIN_STORE_SLUG)
+    .select(STORE_COLUMNS)
+    .eq("active", true)
+    .order("name", { ascending: true });
+
+  if (error) throw error;
+  return (data ?? []).map((row) => normalizeStore(row as Record<string, unknown>));
+}
+
+/**
+ * Tienda gestionada por el panel admin. Prioriza el slug recibido (query param
+ * `?store=`), luego `NEXT_PUBLIC_ADMIN_STORE_SLUG` (por defecto `ag-mayorista`)
+ * y por último la primera tienda activa.
+ */
+export async function fetchAdminStore(slug?: string): Promise<Store> {
+  const supabase = createClient();
+  const preferred = resolveAdminStoreSlug(slug);
+  const { data, error } = await supabase
+    .from("stores")
+    .select(STORE_COLUMNS)
+    .eq("slug", preferred)
     .eq("active", true)
     .maybeSingle();
 
@@ -35,9 +53,9 @@ export async function fetchAdminStore(): Promise<Store> {
 
   const fallback = await supabase
     .from("stores")
-    .select("id, slug, name, subtitle, slogan, whatsapp, alias, cbu, titular, settings, active")
+    .select(STORE_COLUMNS)
     .eq("active", true)
-    .order("created_at", { ascending: true })
+    .order("name", { ascending: true })
     .limit(1)
     .maybeSingle();
 

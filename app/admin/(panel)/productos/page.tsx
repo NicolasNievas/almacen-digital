@@ -1,10 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ImagePlus, Loader2, Pencil, Plus, RefreshCw, Search, Tags, Trash2 } from "lucide-react";
 import ProductForm from "@/components/admin/ProductForm";
 import CategoryManager from "@/components/admin/CategoryManager";
 import ConfirmDialog from "@/components/admin/ConfirmDialog";
+import { ADMIN_STORE_PARAM, resolveAdminStoreSlug } from "@/lib/admin-store";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import {
   deleteProduct,
@@ -18,10 +20,13 @@ import type { Category, Product } from "@/lib/types";
 
 export default function ProductosPage() {
   const configured = isSupabaseConfigured();
+  const searchParams = useSearchParams();
+  const storeSlug = resolveAdminStoreSlug(searchParams.get(ADMIN_STORE_PARAM));
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [storeId, setStoreId] = useState("");
-  const [loading, setLoading] = useState(configured);
+  const [loadedSlug, setLoadedSlug] = useState<string | null>(null);
+  const loading = loadedSlug !== storeSlug;
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState<Product | null>(null);
@@ -32,7 +37,7 @@ export default function ProductosPage() {
 
   const load = useCallback(async () => {
     try {
-      const store = await fetchAdminStore();
+      const store = await fetchAdminStore(storeSlug);
       const [prods, cats] = await Promise.all([
         fetchProducts(store.id),
         fetchAllCategories(store.id),
@@ -44,16 +49,16 @@ export default function ProductosPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudieron cargar los productos.");
     } finally {
-      setLoading(false);
+      setLoadedSlug(storeSlug);
     }
-  }, []);
+  }, [storeSlug]);
 
   useEffect(() => {
     if (!configured) return;
     let active = true;
     (async () => {
       try {
-        const store = await fetchAdminStore();
+        const store = await fetchAdminStore(storeSlug);
         const [prods, cats] = await Promise.all([
           fetchProducts(store.id),
           fetchAllCategories(store.id),
@@ -67,13 +72,13 @@ export default function ProductosPage() {
       } catch (err) {
         if (active) setError(err instanceof Error ? err.message : "No se pudieron cargar los productos.");
       } finally {
-        if (active) setLoading(false);
+        if (active) setLoadedSlug(storeSlug);
       }
     })();
     return () => {
       active = false;
     };
-  }, [configured]);
+  }, [configured, storeSlug]);
 
   const categoryName = useMemo(() => {
     const map = new Map(categories.map((c) => [c.id, c.name]));

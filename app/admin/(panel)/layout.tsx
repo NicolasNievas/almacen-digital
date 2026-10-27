@@ -1,14 +1,10 @@
 import type { ReactNode } from "react";
 import type { User } from "@supabase/supabase-js";
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Store } from "lucide-react";
-import SignOutButton from "@/components/admin/SignOutButton";
-import AdminNav from "@/components/admin/AdminNav";
-import ThemeToggle from "@/components/ThemeToggle";
+import AdminHeader from "@/components/admin/AdminHeader";
 import { STORE } from "@/lib/store";
 import { createClient } from "@/lib/supabase/server";
-import { getAdminStore } from "@/lib/supabase/stores";
+import { getAdminStore, listStores } from "@/lib/supabase/stores";
 
 // El layout lee cookies (sesión de Supabase) = dato dinámico, por lo que
 // /admin debe renderizarse a tiempo de request en lugar de prerenderizarse.
@@ -38,36 +34,16 @@ async function requireAdmin() {
 
 export default async function PanelLayout({ children }: { children: ReactNode }) {
   await requireAdmin();
-  const adminStore = await getAdminStore();
-  const brand = adminStore ?? STORE;
+
+  // El selector vive en el cliente (lee `?store=`), así que el layout solo
+  // entrega las opciones y la marca de respaldo.
+  const [stores, defaultStore] = await Promise.all([listStores(), getAdminStore()]);
+  const fallbackStore = defaultStore ?? STORE;
 
   return (
     <div className="flex flex-1 flex-col bg-neutral-50 print:bg-white dark:bg-neutral-950">
       <header className="border-b border-neutral-200 bg-white print:hidden dark:border-neutral-800 dark:bg-neutral-900">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-          <Link href="/admin" className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-solid text-white">
-              <Store size={16} />
-            </span>
-            <span className="flex flex-col leading-tight">
-              <span className="font-bold text-brand">{brand.name}</span>
-              <span className="text-[11px] font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
-                {brand.subtitle}
-              </span>
-            </span>
-          </Link>
-          <div className="flex items-center gap-3">
-            <ThemeToggle />
-            <Link
-              href={`/${brand.slug}`}
-              className="text-sm text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white"
-            >
-              Ver tienda
-            </Link>
-            <SignOutButton />
-          </div>
-        </div>
-        <AdminNav />
+        <AdminHeader stores={stores} fallbackStore={fallbackStore} />
       </header>
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 print:max-w-none print:px-0 print:py-0">{children}</main>
