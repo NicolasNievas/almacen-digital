@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { CheckCircle2, Minus, Plus, Search, ShoppingCart, Trash2 } from "lucide-react";
 import type { CartLine, Product } from "@/lib/types";
 import { calcSubtotal, formatARS } from "@/lib/pricing";
+import { makeLineId } from "@/lib/cart";
 
 type Props = {
   products: Product[];
@@ -35,19 +36,20 @@ export default function PosScreen({ products, onCheckout }: Props) {
 
   const add = (product: Product) => {
     setMessage(null);
+    const lineId = makeLineId(product.id);
     setLines((prev) => {
-      const existing = prev.find((l) => l.product.id === product.id);
-      if (!existing) return [...prev, { product, quantity: 1 }];
+      const existing = prev.find((l) => l.lineId === lineId);
+      if (!existing) return [...prev, { lineId, product, quantity: 1 }];
       if (existing.quantity + 1 > product.stock) return prev;
-      return prev.map((l) => (l.product.id === product.id ? { ...l, quantity: l.quantity + 1 } : l));
+      return prev.map((l) => (l.lineId === lineId ? { ...l, quantity: l.quantity + 1 } : l));
     });
   };
 
-  const changeQty = (productId: string, quantity: number) => {
+  const changeQty = (lineId: string, quantity: number) => {
     setLines((prev) =>
       quantity <= 0
-        ? prev.filter((l) => l.product.id !== productId)
-        : prev.map((l) => (l.product.id === productId ? { ...l, quantity } : l)),
+        ? prev.filter((l) => l.lineId !== lineId)
+        : prev.map((l) => (l.lineId === lineId ? { ...l, quantity } : l)),
     );
   };
 
@@ -131,12 +133,12 @@ export default function PosScreen({ products, onCheckout }: Props) {
         <div className="max-h-72 space-y-2 overflow-y-auto">
           {lines.length === 0 && <p className="text-sm text-neutral-500 dark:text-neutral-400">Agregá productos para vender.</p>}
           {lines.map((l) => (
-            <div key={l.product.id} className="rounded-lg border border-neutral-200 p-2 dark:border-neutral-800">
+            <div key={l.lineId} className="rounded-lg border border-neutral-200 p-2 dark:border-neutral-800">
               <div className="flex items-start justify-between gap-2">
                 <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{l.product.name}</span>
                 <button
                   type="button"
-                  onClick={() => changeQty(l.product.id, 0)}
+                  onClick={() => changeQty(l.lineId, 0)}
                   className="text-neutral-400 hover:text-red-600"
                   aria-label="Quitar"
                 >
@@ -148,7 +150,7 @@ export default function PosScreen({ products, onCheckout }: Props) {
                   <button
                     type="button"
                     className="rounded border border-neutral-300 p-1 dark:border-neutral-700"
-                    onClick={() => changeQty(l.product.id, l.quantity - 1)}
+                    onClick={() => changeQty(l.lineId, l.quantity - 1)}
                   >
                     <Minus size={14} />
                   </button>
@@ -157,7 +159,7 @@ export default function PosScreen({ products, onCheckout }: Props) {
                     type="button"
                     disabled={l.quantity >= l.product.stock}
                     className="rounded border border-neutral-300 p-1 disabled:opacity-30 dark:border-neutral-700"
-                    onClick={() => changeQty(l.product.id, l.quantity + 1)}
+                    onClick={() => changeQty(l.lineId, l.quantity + 1)}
                   >
                     <Plus size={14} />
                   </button>

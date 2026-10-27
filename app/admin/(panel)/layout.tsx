@@ -8,6 +8,7 @@ import AdminNav from "@/components/admin/AdminNav";
 import ThemeToggle from "@/components/ThemeToggle";
 import { STORE } from "@/lib/store";
 import { createClient } from "@/lib/supabase/server";
+import { getAdminStore } from "@/lib/supabase/stores";
 
 // El layout lee cookies (sesión de Supabase) = dato dinámico, por lo que
 // /admin debe renderizarse a tiempo de request en lugar de prerenderizarse.
@@ -37,6 +38,8 @@ async function requireAdmin() {
 
 export default async function PanelLayout({ children }: { children: ReactNode }) {
   await requireAdmin();
+  const adminStore = await getAdminStore();
+  const brand = adminStore ?? STORE;
 
   return (
     <div className="flex flex-1 flex-col bg-neutral-50 print:bg-white dark:bg-neutral-950">
@@ -47,16 +50,16 @@ export default async function PanelLayout({ children }: { children: ReactNode })
               <Store size={16} />
             </span>
             <span className="flex flex-col leading-tight">
-              <span className="font-bold text-brand">{STORE.name}</span>
+              <span className="font-bold text-brand">{brand.name}</span>
               <span className="text-[11px] font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
-                {STORE.subtitle}
+                {brand.subtitle}
               </span>
             </span>
           </Link>
           <div className="flex items-center gap-3">
             <ThemeToggle />
             <Link
-              href="/"
+              href={`/${brand.slug}`}
               className="text-sm text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white"
             >
               Ver tienda

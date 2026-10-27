@@ -10,6 +10,7 @@ import type { Category, PricingTier, PricingType, Product, ProductInput } from "
 type Props = {
   product?: Product | null;
   categories: Category[];
+  storeId: string;
   onClose: () => void;
   onSaved: () => void;
 };
@@ -18,6 +19,7 @@ type TierRow = { min_quantity: string; unit_price: string };
 
 const EMPTY: ProductInput = {
   name: "",
+  description: null,
   category_id: "",
   unit_price: 0,
   pricing_type: "SIMPLE",
@@ -28,14 +30,18 @@ const EMPTY: ProductInput = {
   active: true,
   tags: [],
   image_url: null,
+  images: [],
+  sizes: [],
+  colors: [],
 };
 
-export default function ProductForm({ product, categories, onClose, onSaved }: Props) {
+export default function ProductForm({ product, categories, storeId, onClose, onSaved }: Props) {
   const editing = Boolean(product);
   const [form, setForm] = useState<ProductInput>(() =>
     product
       ? {
           name: product.name,
+          description: product.description ?? null,
           category_id: product.category_id,
           unit_price: product.unit_price,
           pricing_type: product.pricing_type,
@@ -46,6 +52,9 @@ export default function ProductForm({ product, categories, onClose, onSaved }: P
           active: product.active,
           tags: product.tags,
           image_url: product.image_url ?? null,
+          images: product.images,
+          sizes: product.sizes,
+          colors: product.colors,
         }
       : { ...EMPTY, category_id: categories[0]?.id ?? "" },
   );
@@ -56,6 +65,13 @@ export default function ProductForm({ product, categories, onClose, onSaved }: P
     })),
   );
   const [tagsText, setTagsText] = useState((product?.tags ?? []).join(", "));
+  const [sizesText, setSizesText] = useState((product?.sizes ?? []).join(", "));
+  const [colorsText, setColorsText] = useState((product?.colors ?? []).join(", "));
+  const [galleryText, setGalleryText] = useState(
+    (product?.images ?? [])
+      .filter((image) => image !== product?.image_url)
+      .join("\n"),
+  );
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -86,16 +102,24 @@ export default function ProductForm({ product, categories, onClose, onSaved }: P
     if (!Number.isFinite(form.unit_price) || form.unit_price < 0)
       return setError("El precio no puede ser negativo.");
 
-    // El optimizador de imágenes solo admite res.cloudinary.com (ver next.config.ts).
-    if (form.image_url) {
+    // El optimizador de imágenes solo admite los hosts declarados en next.config.ts.
+    const allowedHosts = new Set(["res.cloudinary.com", "images.unsplash.com"]);
+    const candidateImages = [
+      form.image_url,
+      ...galleryText.split("\n").map((url) => url.trim()),
+    ].filter((url): url is string => Boolean(url));
+
+    for (const image of candidateImages) {
       let parsed: URL;
       try {
-        parsed = new URL(form.image_url);
+        parsed = new URL(image);
       } catch {
-        return setError("La URL de imagen no es válida.");
+        return setError("Una de las URLs de imagen no es válida.");
       }
-      if (parsed.protocol !== "https:" || parsed.hostname !== "res.cloudinary.com") {
-        return setError("La imagen debe ser de res.cloudinary.com o subirla desde el panel.");
+      if (parsed.protocol !== "https:" || !allowedHosts.has(parsed.hostname)) {
+        return setError(
+          "Las imágenes deben ser de res.cloudinary.com o images.unsplash.com (o subirlas desde el panel).",
+        );
       }
     }
 
@@ -116,13 +140,28 @@ export default function ProductForm({ product, categories, onClose, onSaved }: P
         .split(",")
         .map((t) => t.trim())
         .filter(Boolean),
+      sizes: sizesText
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean),
+      colors: colorsText
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean),
       image_url: form.image_url || null,
+      images: [
+        form.image_url,
+        ...galleryText
+          .split("\n")
+          .map((url) => url.trim())
+          .filter(Boolean),
+      ].filter((url): url is string => Boolean(url)),
     };
 
     setSaving(true);
     try {
       if (product) await updateProduct(product.id, payload);
-      else await createProduct(payload);
+      else await createProduct(payload, storeId);
       onSaved();
       onClose();
     } catch (err) {
@@ -212,6 +251,38 @@ export default function ProductForm({ product, categories, onClose, onSaved }: P
               value={tagsText}
               onChange={(e) => setTagsText(e.target.value)}
               placeholder="oferta, nuevo"
+            />
+          </label>
+        </div>
+
+        <label className={labelClass}>
+          Descripción
+          <textarea
+            rows={2}
+            className={inputClass}
+            value={form.description ?? ""}
+            onChange={(e) => set("description", e.target.value || null)}
+            placeholder="Materiales, ingredientes, detalles de preparación…"
+          />
+        </label>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className={labelClass}>
+            Talles (separados por coma)
+            <input
+              className={inputClass}
+              value={sizesText}
+              onChange={(e) => setSizesText(e.target.value)}
+              placeholder="S, M, L, XL"
+            />
+          </label>
+          <label className={labelClass}>
+            Colores (separados por coma)
+            <input
+              className={inputClass}
+              value={colorsText}
+              onChange={(e) => setColorsText(e.target.value)}
+              placeholder="Negro, Blanco, Arena"
             />
           </label>
         </div>
@@ -339,6 +410,16 @@ export default function ProductForm({ product, categories, onClose, onSaved }: P
             value={form.image_url ?? ""}
             onChange={(e) => set("image_url", e.target.value || null)}
           />
+          <label className={labelClass}>
+            Galería adicional (una URL por línea)
+            <textarea
+              rows={3}
+              className={inputClass}
+              value={galleryText}
+              onChange={(e) => setGalleryText(e.target.value)}
+              placeholder="https://res.cloudinary.com/…&#10;https://res.cloudinary.com/…"
+            />
+          </label>
         </div>
 
         <label className="flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300">

@@ -7,6 +7,7 @@ import type { Category } from "@/lib/types";
 
 type Props = {
   categories: Category[];
+  storeId: string;
   onClose: () => void;
   onSaved: () => void;
 };
@@ -23,7 +24,7 @@ function slugify(value: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-export default function CategoryManager({ categories, onClose, onSaved }: Props) {
+export default function CategoryManager({ categories, storeId, onClose, onSaved }: Props) {
   const [rows, setRows] = useState<Row[]>(
     [...categories]
       .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.name.localeCompare(b.name))
@@ -42,7 +43,7 @@ export default function CategoryManager({ categories, onClose, onSaved }: Props)
     setBusyId(row.id);
     setError(null);
     try {
-      await saveCategory({ id: row.id, name: row.name.trim(), sort_order: Number(row.sort_order) || 0 });
+      await saveCategory({ id: row.id, name: row.name.trim(), sort_order: Number(row.sort_order) || 0 }, storeId);
       onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo guardar la categoría.");
@@ -60,7 +61,7 @@ export default function CategoryManager({ categories, onClose, onSaved }: Props)
     setBusyId(id);
     setError(null);
     try {
-      await saveCategory({ id, name, sort_order: Number(newOrder) || 0 });
+      await saveCategory({ id, name, sort_order: Number(newOrder) || 0 }, storeId);
       setRows((prev) => [...prev, { id, name, sort_order: newOrder }]);
       setNewName("");
       setNewOrder("0");

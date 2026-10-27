@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Loader2, RefreshCw } from "lucide-react";
 import StockPanel from "@/components/admin/StockPanel";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
-import { fetchProducts } from "@/lib/supabase/queries";
+import { fetchAdminStore, fetchProducts } from "@/lib/supabase/queries";
 import type { Product } from "@/lib/types";
 
 type Patch = Partial<Pick<Product, "stock" | "unit_price" | "active">>;
@@ -14,13 +14,16 @@ const LOW_STOCK = 5;
 export default function StockPage() {
   const configured = isSupabaseConfigured();
   const [products, setProducts] = useState<Product[]>([]);
+  const [storeId, setStoreId] = useState("");
   const [version, setVersion] = useState(0);
   const [loading, setLoading] = useState(configured);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      setProducts(await fetchProducts());
+      const store = await fetchAdminStore();
+      setStoreId(store.id);
+      setProducts(await fetchProducts(store.id));
       setVersion((v) => v + 1);
       setError(null);
     } catch (err) {
@@ -35,8 +38,10 @@ export default function StockPage() {
     let active = true;
     (async () => {
       try {
-        const data = await fetchProducts();
+        const store = await fetchAdminStore();
+        const data = await fetchProducts(store.id);
         if (active) {
+          setStoreId(store.id);
           setProducts(data);
           setVersion((v) => v + 1);
           setError(null);
@@ -103,7 +108,7 @@ export default function StockPage() {
         <div className="flex items-center justify-center gap-2 py-20 text-neutral-500 dark:text-neutral-400">
           <Loader2 className="h-5 w-5 animate-spin" /> Cargando productos...
         </div>
-      ) : (
+      ) : storeId ? (
         <div className="space-y-4">
           {critical.length > 0 && (
             <section className="rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-900/60 dark:bg-amber-950/30">
@@ -126,6 +131,10 @@ export default function StockPage() {
             <StockPanel key={version} initial={products} onSave={handleSave} />
           </div>
         </div>
+      ) : (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-center text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
+          No se pudo identificar la tienda. Verificá que exista `ag-mayorista` en Supabase.
+        </p>
       )}
     </div>
   );

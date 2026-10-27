@@ -4,7 +4,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { Check, ChevronLeft, ChevronRight, ClipboardList, Loader2, Package, Printer, RefreshCw, X } from "lucide-react";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
-import { fetchOrdersWithItems, fetchProducts } from "@/lib/supabase/queries";
+import { fetchAdminStore, fetchOrdersWithItems, fetchProducts } from "@/lib/supabase/queries";
 import { printTicket, type TicketItem } from "@/lib/printTicket";
 import { formatARS } from "@/lib/pricing";
 import type { OrderItemRow, OrderWithItems, Product } from "@/lib/types";
@@ -99,7 +99,11 @@ export default function PedidosPage() {
 
   const load = useCallback(async () => {
     try {
-      const [ordersData, productsData] = await Promise.all([fetchOrdersWithItems(), fetchProducts()]);
+      const store = await fetchAdminStore();
+      const [ordersData, productsData] = await Promise.all([
+        fetchOrdersWithItems(store.id),
+        fetchProducts(store.id),
+      ]);
       setOrders(ordersData);
       setProducts(productsData);
       setError(null);
@@ -115,7 +119,11 @@ export default function PedidosPage() {
     let active = true;
     (async () => {
       try {
-        const [ordersData, productsData] = await Promise.all([fetchOrdersWithItems(), fetchProducts()]);
+        const store = await fetchAdminStore();
+        const [ordersData, productsData] = await Promise.all([
+          fetchOrdersWithItems(store.id),
+          fetchProducts(store.id),
+        ]);
         if (active) {
           setOrders(ordersData);
           setProducts(productsData);
@@ -183,7 +191,7 @@ export default function PedidosPage() {
               <th className="p-3 font-medium">Fecha</th>
               <th className="p-3 font-medium">Origen</th>
               <th className="p-3 font-medium">Cliente</th>
-              <th className="p-3 font-medium">Retiro</th>
+              <th className="p-3 font-medium">Entrega</th>
               <th className="p-3 font-medium">Pago</th>
               <th className="p-3 font-medium">Total</th>
               <th className="p-3 font-medium">Estado</th>
@@ -221,12 +229,25 @@ export default function PedidosPage() {
                         {order.source}
                       </span>
                     </td>
-                    <td className="p-3">{order.customer_name ?? "—"}</td>
+                    <td className="p-3">
+                      <span className="block">{order.customer_name ?? "—"}</span>
+                      {order.customer_phone && (
+                        <span className="block text-xs text-neutral-400">{order.customer_phone}</span>
+                      )}
+                    </td>
                     <td className="p-3 text-neutral-500 dark:text-neutral-400">
                       {order.source === "POS" ? (
                         <span className="italic">Venta presencial</span>
+                      ) : order.fulfillment_type === "DELIVERY" ? (
+                        <span className="block max-w-[220px]">
+                          <b className="text-neutral-600 dark:text-neutral-300">Delivery</b>
+                          <span className="block truncate text-xs">{order.delivery_address ?? "—"}</span>
+                        </span>
                       ) : (
-                        order.pickup_time?.slice(0, 5) ?? "—"
+                        <span>
+                          <b className="text-neutral-600 dark:text-neutral-300">Retiro</b>{" "}
+                          {order.pickup_time?.slice(0, 5) ?? "—"}
+                        </span>
                       )}
                     </td>
                     <td className="p-3 text-neutral-500 dark:text-neutral-400">{order.payment_method ?? "—"}</td>
@@ -285,6 +306,20 @@ export default function PedidosPage() {
                     <td colSpan={8} className="px-3 py-2">
                       {expanded === order.id && (
                         <div className="w-full my-2 rounded-lg border border-neutral-200 bg-neutral-100 p-3 text-neutral-900 dark:border-neutral-800 dark:bg-neutral-900/60 dark:text-neutral-100">
+                          {(order.notes || order.delivery_address) && (
+                            <div className="mb-3 space-y-1 border-b border-neutral-200 pb-2 text-xs dark:border-neutral-700">
+                              {order.delivery_address && (
+                                <p>
+                                  <b>Dirección:</b> {order.delivery_address}
+                                </p>
+                              )}
+                              {order.notes && (
+                                <p>
+                                  <b>Notas:</b> {order.notes}
+                                </p>
+                              )}
+                            </div>
+                          )}
                           <ul className="space-y-2">
                             {order.items.map((item, index) => {
                               const unit = item.quantity > 0 ? item.line_total / item.quantity : item.line_total;
@@ -309,7 +344,22 @@ export default function PedidosPage() {
                                         </div>
                                       )}
                                     </div>
-                                    <span className="min-w-0 truncate font-medium text-neutral-900 dark:text-white">{item.product_name}</span>
+                                    <div className="min-w-0">
+                                      <span className="block truncate font-medium text-neutral-900 dark:text-white">
+                                        {item.product_name}
+                                      </span>
+                                      {(item.variant?.size || item.variant?.color || item.note) && (
+                                        <span className="block truncate text-[11px] text-neutral-500 dark:text-neutral-400">
+                                          {[
+                                            item.variant?.size ? `Talle ${item.variant.size}` : null,
+                                            item.variant?.color,
+                                            item.note ? `Nota: ${item.note}` : null,
+                                          ]
+                                            .filter(Boolean)
+                                            .join(" · ")}
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
                                   <div className="flex shrink-0 items-center gap-3">
                                     <span className="text-neutral-600 dark:text-neutral-400">

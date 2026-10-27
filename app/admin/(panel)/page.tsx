@@ -3,7 +3,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Boxes, DollarSign, Loader2, Receipt, RefreshCw, TrendingUp } from "lucide-react";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
-import { fetchCategories, fetchOrdersWithItems, fetchProducts } from "@/lib/supabase/queries";
+import {
+  fetchAdminStore,
+  fetchCategories,
+  fetchOrdersWithItems,
+  fetchProducts,
+} from "@/lib/supabase/queries";
 import { formatARS } from "@/lib/pricing";
 import {
   filterByRange,
@@ -33,10 +38,11 @@ export default function PanelHomePage() {
 
   const load = useCallback(async () => {
     try {
+      const store = await fetchAdminStore();
       const [productos, categorias, pedidos] = await Promise.all([
-        fetchProducts(),
-        fetchCategories(),
-        fetchOrdersWithItems(),
+        fetchProducts(store.id),
+        fetchCategories(store.id),
+        fetchOrdersWithItems(store.id),
       ]);
       setProducts(productos);
       setCategories(categorias);
@@ -54,10 +60,11 @@ export default function PanelHomePage() {
     let active = true;
     (async () => {
       try {
+        const store = await fetchAdminStore();
         const [productos, categorias, pedidos] = await Promise.all([
-          fetchProducts(),
-          fetchCategories(),
-          fetchOrdersWithItems(),
+          fetchProducts(store.id),
+          fetchCategories(store.id),
+          fetchOrdersWithItems(store.id),
         ]);
         if (active) {
           setProducts(productos);

@@ -6,7 +6,13 @@ import ProductForm from "@/components/admin/ProductForm";
 import CategoryManager from "@/components/admin/CategoryManager";
 import ConfirmDialog from "@/components/admin/ConfirmDialog";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
-import { deleteProduct, fetchAllCategories, fetchProducts, updateProduct } from "@/lib/supabase/queries";
+import {
+  deleteProduct,
+  fetchAdminStore,
+  fetchAllCategories,
+  fetchProducts,
+  updateProduct,
+} from "@/lib/supabase/queries";
 import { formatARS } from "@/lib/pricing";
 import type { Category, Product } from "@/lib/types";
 
@@ -14,6 +20,7 @@ export default function ProductosPage() {
   const configured = isSupabaseConfigured();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [storeId, setStoreId] = useState("");
   const [loading, setLoading] = useState(configured);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -25,7 +32,12 @@ export default function ProductosPage() {
 
   const load = useCallback(async () => {
     try {
-      const [prods, cats] = await Promise.all([fetchProducts(), fetchAllCategories()]);
+      const store = await fetchAdminStore();
+      const [prods, cats] = await Promise.all([
+        fetchProducts(store.id),
+        fetchAllCategories(store.id),
+      ]);
+      setStoreId(store.id);
       setProducts(prods);
       setCategories(cats);
       setError(null);
@@ -41,8 +53,13 @@ export default function ProductosPage() {
     let active = true;
     (async () => {
       try {
-        const [prods, cats] = await Promise.all([fetchProducts(), fetchAllCategories()]);
+        const store = await fetchAdminStore();
+        const [prods, cats] = await Promise.all([
+          fetchProducts(store.id),
+          fetchAllCategories(store.id),
+        ]);
         if (active) {
+          setStoreId(store.id);
           setProducts(prods);
           setCategories(cats);
           setError(null);
@@ -218,10 +235,11 @@ export default function ProductosPage() {
         </div>
       )}
 
-      {(creating || editing) && (
+      {(creating || editing) && storeId && (
         <ProductForm
           product={editing}
           categories={categories}
+          storeId={storeId}
           onClose={() => {
             setCreating(false);
             setEditing(null);
@@ -230,8 +248,13 @@ export default function ProductosPage() {
         />
       )}
 
-      {managingCategories && (
-        <CategoryManager categories={categories} onClose={() => setManagingCategories(false)} onSaved={() => void load()} />
+      {managingCategories && storeId && (
+        <CategoryManager
+          categories={categories}
+          storeId={storeId}
+          onClose={() => setManagingCategories(false)}
+          onSaved={() => void load()}
+        />
       )}
 
       {toDelete && (
