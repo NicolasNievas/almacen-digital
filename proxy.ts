@@ -3,8 +3,9 @@ import { NextResponse, type NextRequest } from "next/server";
 
 /**
  * En Next.js 16 el antiguo `middleware.ts` se llama `proxy.ts`
- * (la función `middleware` pasa a llamarse `proxy`). Protege /admin
- * y refresca la sesión de Supabase en cada request.
+ * (la función `middleware` pasa a llamarse `proxy`). Protege el panel
+ * (`/admin` y `/[storeSlug]/admin/...`) y refresca la sesión de Supabase
+ * en cada request.
  */
 export async function proxy(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -63,5 +64,7 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  // Panel maestro (`/admin`, `/admin/login`) y paneles por tienda
+  // (`/ag-mayorista/admin/productos`, etc.).
+  matcher: ["/admin/:path*", "/:storeSlug/admin/:path*"],
 };

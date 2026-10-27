@@ -1,10 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useParams } from "next/navigation";
 import { Loader2, RefreshCw } from "lucide-react";
 import PosScreen from "@/components/admin/PosScreen";
-import { ADMIN_STORE_PARAM, resolveAdminStoreSlug } from "@/lib/admin-store";
+import { resolveAdminStoreSlug } from "@/lib/admin-store";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { fetchAdminStore, fetchProducts } from "@/lib/supabase/queries";
 import { calcSubtotal } from "@/lib/pricing";
@@ -13,8 +13,8 @@ import type { CartLine, Product } from "@/lib/types";
 
 export default function PosPage() {
   const configured = isSupabaseConfigured();
-  const searchParams = useSearchParams();
-  const storeSlug = resolveAdminStoreSlug(searchParams.get(ADMIN_STORE_PARAM));
+  const params = useParams<{ storeSlug: string }>();
+  const storeSlug = resolveAdminStoreSlug(params.storeSlug);
   const [products, setProducts] = useState<Product[]>([]);
   const [storeId, setStoreId] = useState("");
   const [version, setVersion] = useState(0);

@@ -1,8 +1,8 @@
 "use client";
 
 import { ChevronDown, Store as StoreIcon } from "lucide-react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { buildAdminHref } from "@/lib/admin-store";
+import { usePathname, useRouter } from "next/navigation";
+import { buildStoreAdminHref } from "@/lib/admin-store";
 import type { Store } from "@/lib/types";
 
 type Props = {
@@ -11,20 +11,18 @@ type Props = {
 };
 
 /**
- * Selector de tienda del panel. Escribe el slug en el query param `?store=`
- * para que todas las secciones (métricas, productos, stock, POS y pedidos)
- * vuelvan a consultar con el `store_id` elegido.
+ * Selector de tienda del panel. Cambia el slug de la URL conservando la
+ * subruta activa: `/ag-mayorista/admin/pos` → `/aura-studio/admin/pos`.
  */
 export default function AdminStoreSwitcher({ stores, activeSlug }: Props) {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
 
   if (stores.length === 0) return null;
 
   const handleChange = (slug: string) => {
     if (slug === activeSlug) return;
-    router.push(buildAdminHref(pathname, slug, searchParams.toString()));
+    router.push(buildStoreAdminHref(pathname, slug));
   };
 
   return (

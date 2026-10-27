@@ -1,31 +1,41 @@
 import { DEFAULT_ADMIN_STORE_SLUG } from "./store";
 
-/**
- * Query param que identifica la tienda activa en todas las rutas del panel.
- * Ej: `/admin/productos?store=aura-studio`.
- */
-export const ADMIN_STORE_PARAM = "store";
-
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
+/** Valida el formato de un slug de tienda. */
+export function isStoreSlug(value: unknown): value is string {
+  return typeof value === "string" && SLUG_PATTERN.test(value);
+}
+
 /**
- * Resuelve el slug de tienda a partir del query param `store`.
- * Si viene vacío o con un formato inválido se usa el default de entorno
+ * Resuelve un slug de tienda y cae al default de entorno
  * (`NEXT_PUBLIC_ADMIN_STORE_SLUG`, por defecto `ag-mayorista`).
  */
-export function resolveAdminStoreSlug(value: string | string[] | null | undefined): string {
+export function resolveAdminStoreSlug(value?: string | string[] | null): string {
   const raw = Array.isArray(value) ? value[0] : value;
   const slug = raw?.trim().toLowerCase() ?? "";
   return SLUG_PATTERN.test(slug) ? slug : DEFAULT_ADMIN_STORE_SLUG;
 }
 
 /**
- * Construye una URL del panel preservando el resto de la query string.
- * Se usa para la navegación entre secciones y para el selector de tiendas.
+ * URL canónica del panel de una tienda: `/{storeSlug}/admin{section}`.
+ * `section` puede venir con o sin barra inicial (`productos`, `/productos`).
  */
-export function buildAdminHref(pathname: string, storeSlug: string, search?: string): string {
-  const params = new URLSearchParams(search ?? "");
-  params.set(ADMIN_STORE_PARAM, storeSlug);
-  const query = params.toString();
-  return query ? `${pathname}?${query}` : pathname;
+export function adminSectionHref(storeSlug: string, section = ""): string {
+  if (!section) return `/${storeSlug}/admin`;
+  return `/${storeSlug}/admin${section.startsWith("/") ? section : `/${section}`}`;
+}
+
+/**
+ * Conserva la subruta activa al cambiar de tienda:
+ * `/ag-mayorista/admin/productos` + `aura-studio` → `/aura-studio/admin/productos`.
+ */
+export function buildStoreAdminHref(pathname: string, storeSlug: string): string {
+  // Se buscan los segmentos reales (no un indexOf) para que un slug como
+  // `admin-store` no se confunda con el segmento `admin`.
+  const segments = pathname.split("/").filter(Boolean);
+  const adminIndex = segments.indexOf("admin");
+  const suffix =
+    adminIndex >= 0 ? `/${segments.slice(adminIndex).join("/")}` : "/admin";
+  return `/${storeSlug}${suffix}`;
 }

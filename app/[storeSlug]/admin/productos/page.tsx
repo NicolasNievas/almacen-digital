@@ -1,12 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useParams } from "next/navigation";
 import { ImagePlus, Loader2, Pencil, Plus, RefreshCw, Search, Tags, Trash2 } from "lucide-react";
 import ProductForm from "@/components/admin/ProductForm";
 import CategoryManager from "@/components/admin/CategoryManager";
 import ConfirmDialog from "@/components/admin/ConfirmDialog";
-import { ADMIN_STORE_PARAM, resolveAdminStoreSlug } from "@/lib/admin-store";
+import { resolveAdminStoreSlug } from "@/lib/admin-store";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import {
   deleteProduct,
@@ -20,8 +20,8 @@ import type { Category, Product } from "@/lib/types";
 
 export default function ProductosPage() {
   const configured = isSupabaseConfigured();
-  const searchParams = useSearchParams();
-  const storeSlug = resolveAdminStoreSlug(searchParams.get(ADMIN_STORE_PARAM));
+  const params = useParams<{ storeSlug: string }>();
+  const storeSlug = resolveAdminStoreSlug(params.storeSlug);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [storeId, setStoreId] = useState("");

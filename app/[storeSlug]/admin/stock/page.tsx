@@ -1,10 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useParams } from "next/navigation";
 import { Loader2, RefreshCw } from "lucide-react";
 import StockPanel from "@/components/admin/StockPanel";
-import { ADMIN_STORE_PARAM, resolveAdminStoreSlug } from "@/lib/admin-store";
+import { resolveAdminStoreSlug } from "@/lib/admin-store";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { fetchAdminStore, fetchProducts } from "@/lib/supabase/queries";
 import type { Product } from "@/lib/types";
@@ -15,8 +15,8 @@ const LOW_STOCK = 5;
 
 export default function StockPage() {
   const configured = isSupabaseConfigured();
-  const searchParams = useSearchParams();
-  const storeSlug = resolveAdminStoreSlug(searchParams.get(ADMIN_STORE_PARAM));
+  const params = useParams<{ storeSlug: string }>();
+  const storeSlug = resolveAdminStoreSlug(params.storeSlug);
   const [products, setProducts] = useState<Product[]>([]);
   const [storeId, setStoreId] = useState("");
   const [version, setVersion] = useState(0);

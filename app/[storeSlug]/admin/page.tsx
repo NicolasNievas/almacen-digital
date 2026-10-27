@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useParams } from "next/navigation";
 import { Boxes, DollarSign, Loader2, Receipt, RefreshCw, TrendingUp } from "lucide-react";
-import { ADMIN_STORE_PARAM, resolveAdminStoreSlug } from "@/lib/admin-store";
+import { resolveAdminStoreSlug } from "@/lib/admin-store";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import {
   fetchAdminStore,
@@ -31,8 +31,8 @@ import type { Category, OrderWithItems, Product } from "@/lib/types";
 
 export default function PanelHomePage() {
   const configured = isSupabaseConfigured();
-  const searchParams = useSearchParams();
-  const storeSlug = resolveAdminStoreSlug(searchParams.get(ADMIN_STORE_PARAM));
+  const params = useParams<{ storeSlug: string }>();
+  const storeSlug = resolveAdminStoreSlug(params.storeSlug);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [orders, setOrders] = useState<OrderWithItems[]>([]);

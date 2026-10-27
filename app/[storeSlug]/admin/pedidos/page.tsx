@@ -1,10 +1,10 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useParams } from "next/navigation";
 import Image from "next/image";
 import { Check, ChevronLeft, ChevronRight, ClipboardList, Loader2, Package, Printer, RefreshCw, X } from "lucide-react";
-import { ADMIN_STORE_PARAM, resolveAdminStoreSlug } from "@/lib/admin-store";
+import { resolveAdminStoreSlug } from "@/lib/admin-store";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { fetchAdminStore, fetchOrdersWithItems, fetchProducts } from "@/lib/supabase/queries";
 import { printTicket, type TicketItem } from "@/lib/printTicket";
@@ -85,8 +85,8 @@ function printOrderTicket(order: OrderWithItems, productsByName: Map<string, Pro
 
 export default function PedidosPage() {
   const configured = isSupabaseConfigured();
-  const searchParams = useSearchParams();
-  const storeSlug = resolveAdminStoreSlug(searchParams.get(ADMIN_STORE_PARAM));
+  const params = useParams<{ storeSlug: string }>();
+  const storeSlug = resolveAdminStoreSlug(params.storeSlug);
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loadedSlug, setLoadedSlug] = useState<string | null>(null);

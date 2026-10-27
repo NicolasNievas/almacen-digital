@@ -97,22 +97,26 @@ La UI se adapta automáticamente:
 
 ## Panel de administración
 
-El panel opera sobre **una tienda a la vez**. La tienda activa vive en la URL
-(`?store=slug`), así que se puede compartir el enlace de una sección con la
-tienda ya seleccionada:
+Hay dos niveles de rutas:
 
 ```text
-/admin?store=aura-studio
-/admin/productos?store=rotiseria-express
-/admin/pos?store=ag-mayorista
+/admin                        Panel maestro (SuperAdmin): lista las tiendas
+/admin?store=aura-studio      Redirige a /aura-studio/admin
+/[storeSlug]/admin            Métricas de la tienda
+/[storeSlug]/admin/productos
+/[storeSlug]/admin/stock
+/[storeSlug]/admin/pos
+/[storeSlug]/admin/pedidos
 ```
 
-- El selector del header lista todas las tiendas activas de `stores`
-  (`lib/supabase/stores.ts` → `listStores`).
-- Al cambiarlo, se reescribe el parámetro y métricas, productos, stock, POS y
-  pedidos vuelven a consultar filtrando por ese `store_id`.
-- Si la URL no trae `?store=`, se usa `NEXT_PUBLIC_ADMIN_STORE_SLUG`
-  (`ag-mayorista` por defecto) y, si esa tienda no existe, la primera activa.
+- `/admin` requiere sesión admin y lista todas las tiendas activas de `stores`.
+  Cada tarjeta (y el botón "Ir a ...") lleva al panel de esa tienda.
+- El panel por tienda resuelve el tenant desde el segmento `[storeSlug]`, así
+  que la URL es compartible y cada sección filtra por su `store_id`.
+- El selector del header navega a `/[otraTienda]/admin/<misma sección>` sin
+  perder la subruta activa.
+- `NEXT_PUBLIC_ADMIN_STORE_SLUG` (`ag-mayorista` por defecto) solo define la
+  tienda destacada en el panel maestro; ya no condiciona al resto del panel.
 
 ## Rutas principales
 
@@ -120,7 +124,8 @@ tienda ya seleccionada:
 /                       Landing corporativa
 /[storeSlug]            Tienda dinámica (settings-driven)
 /[storeSlug] 404        Vista personalizada si el slug no existe
-/admin                  Panel (métricas, productos, stock, POS, pedidos)
+/admin                  Panel maestro (selección de tienda)
+/[storeSlug]/admin      Panel de la tienda (métricas, productos, stock, POS, pedidos)
 /api/mercadopago/...    Creación de preferencia de pago
 ```
 
