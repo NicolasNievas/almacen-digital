@@ -1,40 +1,71 @@
 import { createClient } from "./client";
-import type { Category, Order, OrderWithItems, PricingTier, Product, ProductInput } from "../types";
+import { normalizeCategory, normalizeOrder, normalizeOrderWithItems, normalizeProduct, normalizeStore } from "./mappers";
+import { DEFAULT_ADMIN_STORE_SLUG } from "../store";
+import type { Category, Order, OrderWithItems, Product, ProductInput, Store } from "../types";
 
-/**
- * Las columnas `numeric` de Postgres pueden llegar como string según la versión
- * de PostgREST, y la tabla real no tiene la columna `tags` del JSON de Fase 1.
- * Normalizamos todo al tipo `Product` para que la UI nunca reciba datos raros.
- */
-function normalizeProduct(row: Record<string, unknown>): Product {
-  return {
-    id: String(row.id),
-    name: String(row.name ?? ""),
-    category_id: String(row.category_id ?? ""),
-    unit_price: Number(row.unit_price ?? 0),
-    pricing_type: (row.pricing_type as Product["pricing_type"]) ?? "SIMPLE",
-    pricing_tiers: Array.isArray(row.pricing_tiers) ? (row.pricing_tiers as PricingTier[]) : [],
-    bundle_size: row.bundle_size == null ? undefined : Number(row.bundle_size),
-    bundle_price: row.bundle_price == null ? undefined : Number(row.bundle_price),
-    stock: Number(row.stock ?? 0),
-    active: Boolean(row.active),
-    tags: Array.isArray(row.tags) ? (row.tags as string[]) : [],
-    image_url: row.image_url == null ? undefined : String(row.image_url),
-  };
+/** Tienda pública por slug (para Client Components). */
+export async function fetchStoreBySlug(slug: string): Promise<Store | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("stores")
+    .select("id, slug, name, subtitle, slogan, whatsapp, alias, cbu, titular, settings, active")
+    .eq("slug", slug)
+    .eq("active", true)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data ? normalizeStore(data as Record<string, unknown>) : null;
 }
 
-/** Catálogo público: solo categorías y productos activos. */
-export async function fetchCatalog(): Promise<{ categories: Category[]; products: Product[] }> {
+/**
+ * Tienda gestionada por el panel admin. Usa `NEXT_PUBLIC_ADMIN_STORE_SLUG`
+ * (por defecto `ag-mayorista`) y cae a la primera tienda activa.
+ */
+export async function fetchAdminStore(): Promise<Store> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("stores")
+    .select("id, slug, name, subtitle, slogan, whatsapp, alias, cbu, titular, settings, active")
+    .eq("slug", DEFAULT_ADMIN_STORE_SLUG)
+    .eq("active", true)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (data) return normalizeStore(data as Record<string, unknown>);
+
+  const fallback = await supabase
+    .from("stores")
+    .select("id, slug, name, subtitle, slogan, whatsapp, alias, cbu, titular, settings, active")
+    .eq("active", true)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (fallback.error) throw fallback.error;
+  if (!fallback.data) {
+    throw new Error(
+      "No hay tiendas activas. Ejecutá supabase/006_multitenant_saas.sql en Supabase.",
+    );
+  }
+  return normalizeStore(fallback.data as Record<string, unknown>);
+}
+
+/** Catálogo público de una tienda: solo categorías y productos activos. */
+export async function fetchCatalog(
+  storeId: string,
+): Promise<{ categories: Category[]; products: Product[] }> {
   const supabase = createClient();
   const [categoriesRes, productsRes] = await Promise.all([
     supabase
       .from("categories")
-      .select("id, name, sort_order")
+      .select("id, name, sort_order, store_id")
+      .eq("store_id", storeId)
       .order("sort_order", { ascending: true })
       .order("name", { ascending: true }),
     supabase
       .from("products")
       .select("*")
+      .eq("store_id", storeId)
       .eq("active", true)
       .order("name", { ascending: true }),
   ]);
@@ -42,61 +73,48 @@ export async function fetchCatalog(): Promise<{ categories: Category[]; products
   if (categoriesRes.error) throw categoriesRes.error;
   if (productsRes.error) throw productsRes.error;
 
-  const categories = (categoriesRes.data ?? []).map((c) => ({
-    id: String(c.id),
-    name: String(c.name),
-  })) as Category[];
-
   return {
-    categories,
-    products: (productsRes.data ?? []).map(normalizeProduct),
+    categories: (categoriesRes.data ?? []).map((c) => normalizeCategory(c as Record<string, unknown>)),
+    products: (productsRes.data ?? []).map((p) => normalizeProduct(p as Record<string, unknown>)),
   };
 }
 
-/** Todas las categorías (público, sin depender de productos activos). */
-export async function fetchCategories(): Promise<Category[]> {
+/** Categorías públicas de una tienda. */
+export async function fetchCategories(storeId: string): Promise<Category[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("categories")
-    .select("id, name, sort_order")
+    .select("id, name, sort_order, store_id")
+    .eq("store_id", storeId)
     .order("sort_order", { ascending: true })
     .order("name", { ascending: true });
   if (error) throw error;
-  return (data ?? []).map((c) => ({
-    id: String(c.id),
-    name: String(c.name),
-    sort_order: Number(c.sort_order ?? 0),
-  })) as Category[];
+  return (data ?? []).map((c) => normalizeCategory(c as Record<string, unknown>));
 }
 
-/** Todos los productos (incluye pausados). Requiere sesión admin por RLS. */
-export async function fetchProducts(): Promise<Product[]> {
+/** Todos los productos de la tienda (incluye pausados). Requiere admin por RLS. */
+export async function fetchProducts(storeId: string): Promise<Product[]> {
   const supabase = createClient();
-  const { data, error } = await supabase.from("products").select("*").order("name", { ascending: true });
+  const { data, error } = await supabase
+    .from("products")
+    .select("*")
+    .eq("store_id", storeId)
+    .order("name", { ascending: true });
   if (error) throw error;
-  return (data ?? []).map(normalizeProduct);
+  return (data ?? []).map((p) => normalizeProduct(p as Record<string, unknown>));
 }
 
 /** Todas las categorías con su orden (para el panel). */
-export async function fetchAllCategories(): Promise<Category[]> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("categories")
-    .select("id, name, sort_order")
-    .order("sort_order", { ascending: true })
-    .order("name", { ascending: true });
-  if (error) throw error;
-  return (data ?? []).map((c) => ({
-    id: String(c.id),
-    name: String(c.name),
-    sort_order: Number(c.sort_order ?? 0),
-  }));
+export async function fetchAllCategories(storeId: string): Promise<Category[]> {
+  return fetchCategories(storeId);
 }
 
-/** Crea un producto. Requiere sesión admin por RLS. */
-export async function createProduct(input: ProductInput): Promise<void> {
+/** Crea un producto dentro de la tienda. Requiere sesión admin por RLS. */
+export async function createProduct(input: ProductInput, storeId: string): Promise<void> {
   const supabase = createClient();
-  const { error } = await supabase.from("products").insert(input);
+  const { error } = await supabase
+    .from("products")
+    .insert({ ...input, store_id: storeId });
   if (error) throw error;
 }
 
@@ -114,66 +132,45 @@ export async function deleteProduct(id: string): Promise<void> {
   if (error) throw error;
 }
 
-/** Crea o actualiza una categoría (id = slug). */
-export async function saveCategory(category: Category): Promise<void> {
+/** Crea o actualiza una categoría (id = slug dentro de la tienda). */
+export async function saveCategory(category: Category, storeId: string): Promise<void> {
   const supabase = createClient();
-  const { error } = await supabase
-    .from("categories")
-    .upsert({ id: category.id, name: category.name, sort_order: category.sort_order ?? 0 });
+  const { error } = await supabase.from("categories").upsert(
+    {
+      id: category.id,
+      name: category.name,
+      sort_order: category.sort_order ?? 0,
+      store_id: storeId,
+    },
+    { onConflict: "store_id,id" },
+  );
   if (error) throw error;
 }
 
-function normalizeOrder(o: Record<string, unknown>): Order {
-  return {
-    id: String(o.id),
-    source: (o.source as Order["source"]) ?? "WEB",
-    customer_name: o.customer_name == null ? null : String(o.customer_name),
-    pickup_time: o.pickup_time == null ? null : String(o.pickup_time),
-    payment_method: o.payment_method == null ? null : String(o.payment_method),
-    total: Number(o.total ?? 0),
-    status: String(o.status ?? ""),
-    created_at: String(o.created_at),
-  };
-}
-
-/** Pedidos/ventas recientes (WEB y POS). Requiere sesión admin por RLS. */
-export async function fetchOrders(): Promise<Order[]> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("orders")
-    .select("id, source, customer_name, pickup_time, payment_method, total, status, created_at")
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-  return (data ?? []).map(normalizeOrder);
-}
-
-/** Pedidos con su detalle de items (para el panel de pedidos). */
-export async function fetchOrdersWithItems(): Promise<OrderWithItems[]> {
+/** Pedidos/ventas recientes de la tienda. Requiere sesión admin por RLS. */
+export async function fetchOrders(storeId: string): Promise<Order[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("orders")
     .select(
-      "id, source, customer_name, pickup_time, payment_method, total, status, created_at, order_items(quantity, line_total, products(name, image_url))",
+      "id, store_id, source, customer_name, customer_phone, pickup_time, payment_method, fulfillment_type, delivery_address, notes, total, status, created_at",
     )
+    .eq("store_id", storeId)
     .order("created_at", { ascending: false });
   if (error) throw error;
-  return (data ?? []).map((row) => {
-    const r = row as Record<string, unknown> & { order_items?: unknown[] };
-    return {
-      ...normalizeOrder(r),
-      items: (r.order_items ?? []).map((raw) => {
-        const it = raw as {
-          quantity?: unknown;
-          line_total?: unknown;
-          products?: { name?: unknown; image_url?: unknown } | null;
-        };
-        return {
-          quantity: Number(it.quantity ?? 0),
-          line_total: Number(it.line_total ?? 0),
-          product_name: it.products?.name == null ? "—" : String(it.products.name),
-          image_url: it.products?.image_url == null ? null : String(it.products.image_url),
-        };
-      }),
-    };
-  });
+  return (data ?? []).map((o) => normalizeOrder(o as Record<string, unknown>));
+}
+
+/** Pedidos con su detalle de items (para el panel de pedidos). */
+export async function fetchOrdersWithItems(storeId: string): Promise<OrderWithItems[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("orders")
+    .select(
+      "id, store_id, source, customer_name, customer_phone, pickup_time, payment_method, fulfillment_type, delivery_address, notes, total, status, created_at, order_items(quantity, line_total, variant, note, products(name, image_url))",
+    )
+    .eq("store_id", storeId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map((row) => normalizeOrderWithItems(row as Record<string, unknown>));
 }
