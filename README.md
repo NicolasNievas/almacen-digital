@@ -185,11 +185,41 @@ sesión para que el JWT incluya el rol nuevo.
 ## Scripts
 
 ```bash
-npm run dev      # desarrollo
-npm run build    # build de producción
-npm run start    # servir el build
-npm run lint     # ESLint
+npm run dev        # desarrollo
+npm run build      # build de producción
+npm run start      # servir el build
+npm run lint       # ESLint
+npm run typecheck  # TypeScript sin emitir
+npm test           # tests una vez (CI)
+npm run test:watch # tests en modo watch
 ```
+
+## Pruebas y CI
+
+El proyecto usa [Vitest](https://vitest.dev/) con React Testing Library y
+`jsdom`. La configuración está en `vitest.config.mts` y el setup global
+(limpieza del DOM + matchers de jest-dom) en `vitest.setup.ts`.
+
+Los tests viven junto al código, en carpetas `__tests__`:
+
+- `lib/__tests__/auth.test.ts`: permisos y redirecciones de `requireAdmin` y
+  `requireSuperadmin` (sin sesión, sin rol, superadmin, admin con y sin tienda
+  asignada). Mockea Supabase y `next/navigation`, así que no necesita un
+  proyecto real ni variables de entorno.
+- `lib/__tests__/pricing.test.ts`: totales de POS/compras para precios
+  `SIMPLE`, `TIERED` y `BUNDLE`, cantidades inválidas y ahorro (`calcSavings`).
+
+Para agregar tests de componentes, crear archivos `*.test.tsx` y usar
+`render`/`screen` de `@testing-library/react`; la limpieza entre tests ya está
+configurada.
+
+El workflow `.github/workflows/ci.yml` corre en cada push y pull request a
+`develop` y `main`:
+
+1. `npm ci`
+2. `npx tsc --noEmit`
+3. `npm run lint`
+4. `npm test`
 
 ## Notas de seguridad
 
