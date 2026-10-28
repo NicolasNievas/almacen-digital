@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import type { ReactNode } from "react";
 import "./globals.css";
 import ThemeScript from "@/components/ThemeScript";
 
@@ -19,7 +20,11 @@ export const metadata: Metadata = {
     "SaaS multitenant para comercios: catálogo online, POS, stock en tiempo real, métricas y checkout por WhatsApp o Mercado Pago.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+interface RootLayoutProps {
+  children: ReactNode;
+}
+
+export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html
       lang="es"
