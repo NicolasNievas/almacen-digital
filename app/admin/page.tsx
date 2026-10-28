@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { ArrowRight, ExternalLink, LayoutGrid, Store as StoreIcon } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 import SignOutButton from "@/components/admin/SignOutButton";
-import { requireAdmin } from "@/lib/auth";
+import { requireSuperadmin } from "@/lib/auth";
 import { adminSectionHref, resolveAdminStoreSlug } from "@/lib/admin-store";
 import { BUSINESS_TYPE_LABELS } from "@/lib/store-settings";
 import { listStores } from "@/lib/supabase/stores";
@@ -17,20 +17,23 @@ export const metadata: Metadata = {
 };
 
 /**
- * Vista SuperAdmin: lista todas las tiendas activas y deriva al panel de la
- * tienda elegida (`/[storeSlug]/admin`).
+ * Vista SuperAdmin (exclusiva del rol `superadmin`): lista todas las tiendas
+ * activas y deriva al panel de la tienda elegida (`/[storeSlug]/admin`).
  *
  * - `/admin` → listado de tiendas.
  * - `/admin?store=aura-studio` → redirección a `/aura-studio/admin`.
  * - Sin selección, se destaca la tienda por defecto
  *   (`NEXT_PUBLIC_ADMIN_STORE_SLUG`, `ag-mayorista` si no está definida).
+ *
+ * Un admin de tienda que llegue acá es redirigido por `requireSuperadmin()`
+ * (y antes por el proxy) a su propio panel.
  */
 export default async function MasterAdminPage({
   searchParams,
 }: {
   searchParams: Promise<{ store?: string }>;
 }) {
-  await requireAdmin();
+  await requireSuperadmin();
 
   const { store: requested } = await searchParams;
   const stores = await listStores();

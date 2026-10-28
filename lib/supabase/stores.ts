@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { normalizeStore } from "./mappers";
 import { createPublicClient } from "./public";
+import { createClient as createServerSupabaseClient } from "./server";
 import { resolveAdminStoreSlug } from "../admin-store";
 import type { Store } from "../types";
 
@@ -69,6 +70,51 @@ export const listStores = cache(async (): Promise<Store[]> => {
 
   if (error) {
     console.error("No se pudieron listar las tiendas:", error.message);
+    return [];
+  }
+  return (data ?? []).map((row) => normalizeStore(row as Record<string, unknown>));
+});
+
+/**
+ * Tiendas activas asignadas a un usuario en `user_stores`.
+ *
+ * Usa el cliente con cookies porque la RLS de `user_stores` exige sesión.
+ * Un admin de tienda solo debe ver las tiendas que realmente administra.
+ */
+export const listUserStores = cache(async (userId: string): Promise<Store[]> => {
+  if (!userId) return [];
+
+  const supabase = await createServerSupabaseClient();
+
+  const { data: links, error: linksError } = await supabase
+    .from("user_stores")
+    .select("store_id")
+    .eq("user_id", userId)
+    .eq("active", true);
+
+  if (linksError) {
+    console.error("No se pudieron leer los accesos del usuario:", linksError.message);
+    return [];
+  }
+
+  const storeIds = [
+    ...new Set(
+      ((links ?? []) as { store_id: string | null }[])
+        .map((link) => link.store_id)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
+  if (storeIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from("stores")
+    .select(STORE_COLUMNS)
+    .in("id", storeIds)
+    .eq("active", true)
+    .order("name", { ascending: true });
+
+  if (error) {
+    console.error("No se pudieron cargar las tiendas del usuario:", error.message);
     return [];
   }
   return (data ?? []).map((row) => normalizeStore(row as Record<string, unknown>));
