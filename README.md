@@ -221,6 +221,33 @@ El workflow `.github/workflows/ci.yml` corre en cada push y pull request a
 3. `npm run lint`
 4. `npm test`
 
+## Escaneos de seguridad
+
+El workflow de CI incluye dos jobs de seguridad:
+
+- **Semgrep SAST**: usa la imagen oficial `semgrep/semgrep:1.183.0` y el ruleset
+  `p/typescript`. Corre en cada push y pull request, falla si encuentra
+  hallazgos (`--error`) y publica el reporte `semgrep.sarif` como artifact.
+  No necesita cuenta ni token de Semgrep.
+- **OWASP ZAP Baseline**: escanea `https://ag-mayorista.vercel.app/` en pushes
+  a `develop`/`main` y en ejecuciones manuales (no en pull requests, para no
+  generar tráfico innecesario contra producción). Es un escaneo pasivo, no
+  intrusivo, y genera el artifact `zap-baseline-report` con reportes HTML, MD y
+  JSON. También publica/actualiza un issue con el reporte; el permiso
+  `issues: write` está limitado al job `zap_scan`. El resumen se muestra además
+  en la página del job.
+
+ZAP corre dentro de Docker en el runner de GitHub, así que no hace falta tener
+Docker instalado localmente. Para probarlo sin esperar un push, ir a
+**Actions → CI → Run workflow** y elegir la rama.
+
+Por ahora ZAP usa `fail_action: false` (report-only) para poder revisar los
+primeros resultados sin bloquear el pipeline. Cuando el reporte esté limpio, se
+puede cambiar a `true` para que también funcione como gate. Semgrep sí falla el
+job ante hallazgos; si se quiere solo reportar, quitar `--error` del comando.
+Si preferís que ZAP no cree issues, poné `allow_issue_writing: false` y quitá
+`issues: write` del job `zap_scan`.
+
 ## Notas de seguridad
 
 - El catálogo público solo lee tiendas activas y productos activos.
