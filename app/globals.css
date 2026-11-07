@@ -43,6 +43,19 @@ body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
 
+/*
+ * Scope visual por tenant (`StoreThemeScope`).
+ * Las variables llegan server-side en el `style` del wrapper; estos
+ * selectores solo conectan los tokens con la tipografía real.
+ */
+[data-store] {
+  font-family: var(--store-font-body, var(--font-geist-sans), Arial, Helvetica, sans-serif);
+}
+
+[data-store] :where(h1, h2, h3, h4, h5, h6) {
+  font-family: var(--store-font-heading, var(--font-geist-sans), Arial, Helvetica, sans-serif);
+}
+
 @media print {
   .dark,
   :root {

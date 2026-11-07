@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
 import AdminHeader from "@/components/admin/AdminHeader";
+import StoreThemeScope from "@/components/store/StoreThemeScope";
 import { requireAdmin } from "@/lib/auth";
 import { getStoreBySlug, listStores, listUserStores } from "@/lib/supabase/stores";
 
@@ -36,7 +37,10 @@ export default async function StoreAdminLayout({
   if (!store) notFound();
 
   return (
-    <div className="flex flex-1 flex-col bg-neutral-50 print:bg-white dark:bg-neutral-950">
+    <StoreThemeScope
+      store={store}
+      className="flex flex-1 flex-col bg-neutral-50 print:bg-white dark:bg-neutral-950"
+    >
       <header className="border-b border-neutral-200 bg-white print:hidden dark:border-neutral-800 dark:bg-neutral-900">
         <AdminHeader
           stores={stores}
@@ -46,6 +50,6 @@ export default async function StoreAdminLayout({
       </header>
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 print:max-w-none print:px-0 print:py-0">{children}</main>
-    </div>
+    </StoreThemeScope>
   );
 }

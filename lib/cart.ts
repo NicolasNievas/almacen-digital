@@ -1,5 +1,8 @@
 import type { CartLine, Product, ProductVariant } from "./types";
 
+/** Evento global para abrir el carrito desde cualquier componente del storefront. */
+export const OPEN_CART_EVENT = "store:open-cart";
+
 /** Clave estable: mismo producto + mismo talle/color = misma línea. */
 export function makeLineId(productId: string, variant?: ProductVariant): string {
   return `${productId}::${variant?.size ?? ""}::${variant?.color ?? ""}`;

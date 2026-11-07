@@ -6,7 +6,7 @@ import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { fetchCatalog } from "@/lib/supabase/queries";
 import type { BusinessType, CartLine, Category, Checkout, Product, ProductVariant, Store } from "@/lib/types";
 import { calcSubtotal, formatARS } from "@/lib/pricing";
-import { addLine, cartItemCount, updateLineNote, updateLineQuantity } from "@/lib/cart";
+import { addLine, cartItemCount, OPEN_CART_EVENT, updateLineNote, updateLineQuantity } from "@/lib/cart";
 import { createMercadoPagoPreference, toMercadoPagoItems } from "@/lib/mercadopago";
 import { BUSINESS_TYPE_LABELS } from "@/lib/store-settings";
 import ProductCard from "@/components/ProductCard";
@@ -88,6 +88,13 @@ export default function StoreCatalog({ store }: Props) {
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
   }, [configured, load]);
+
+  // La navbar boutique no duplica el estado del carrito: solo emite un evento.
+  useEffect(() => {
+    const openCart = () => setCartOpen(true);
+    window.addEventListener(OPEN_CART_EVENT, openCart);
+    return () => window.removeEventListener(OPEN_CART_EVENT, openCart);
+  }, []);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -184,9 +191,10 @@ export default function StoreCatalog({ store }: Props) {
   ].filter((chip): chip is string => Boolean(chip));
 
   return (
-    <div className="flex flex-col space-y-5 pb-20">
+    <div id="catalogo" className="flex scroll-mt-24 flex-col space-y-5 pb-20">
       <div
-        className={`overflow-hidden rounded-2xl bg-gradient-to-br ${HERO_GRADIENTS[settings.business_type]} px-5 py-6 text-white shadow-lg sm:px-7`}
+        id="nosotros"
+        className={`scroll-mt-24 overflow-hidden rounded-2xl bg-gradient-to-br ${HERO_GRADIENTS[settings.business_type]} px-5 py-6 text-white shadow-lg sm:px-7`}
       >
         <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-full bg-white/20 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide backdrop-blur">
