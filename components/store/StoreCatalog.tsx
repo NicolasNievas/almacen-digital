@@ -6,7 +6,17 @@ import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { fetchCatalog } from "@/lib/supabase/queries";
 import type { BusinessType, CartLine, Category, Checkout, Product, ProductVariant, Store } from "@/lib/types";
 import { calcSubtotal, formatARS } from "@/lib/pricing";
-import { addLine, cartItemCount, OPEN_CART_EVENT, updateLineNote, updateLineQuantity } from "@/lib/cart";
+import { addLine, cartItemCount, updateLineNote, updateLineQuantity } from "@/lib/cart";
+import {
+  CART_COUNT_EVENT,
+  CATEGORY_EVENT,
+  OPEN_CART_EVENT,
+  SEARCH_EVENT,
+  dispatchStoreEvent,
+  type CartCountDetail,
+  type CategorySelection,
+  type SearchSelection,
+} from "@/lib/store-events";
 import { createMercadoPagoPreference, toMercadoPagoItems } from "@/lib/mercadopago";
 import { BUSINESS_TYPE_LABELS } from "@/lib/store-settings";
 import ProductCard from "@/components/ProductCard";
@@ -29,6 +39,7 @@ export default function StoreCatalog({ store }: Props) {
   const configured = isSupabaseConfigured();
   const { settings } = store;
   const { features } = settings;
+  const isBoutique = settings.design.storefront_layout === "boutique";
 
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -89,11 +100,33 @@ export default function StoreCatalog({ store }: Props) {
     return () => window.removeEventListener("focus", onFocus);
   }, [configured, load]);
 
-  // La navbar boutique no duplica el estado del carrito: solo emite un evento.
+  // La navbar no duplica el estado: emite eventos y el catálogo los aplica.
   useEffect(() => {
     const openCart = () => setCartOpen(true);
+
+    const onSearch = (event: Event) => {
+      const detail = (event as CustomEvent<SearchSelection>).detail;
+      setQuery(detail?.query ?? "");
+      setVisible(PAGE_SIZE);
+    };
+
+    const onCategory = (event: Event) => {
+      const detail = (event as CustomEvent<CategorySelection>).detail;
+      if (!detail?.categoryId) return;
+      setCategory(detail.categoryId);
+      setQuery(detail.tag ?? "");
+      setVisible(PAGE_SIZE);
+    };
+
     window.addEventListener(OPEN_CART_EVENT, openCart);
-    return () => window.removeEventListener(OPEN_CART_EVENT, openCart);
+    window.addEventListener(SEARCH_EVENT, onSearch);
+    window.addEventListener(CATEGORY_EVENT, onCategory);
+
+    return () => {
+      window.removeEventListener(OPEN_CART_EVENT, openCart);
+      window.removeEventListener(SEARCH_EVENT, onSearch);
+      window.removeEventListener(CATEGORY_EVENT, onCategory);
+    };
   }, []);
 
   const filtered = useMemo(() => {
@@ -182,6 +215,11 @@ export default function StoreCatalog({ store }: Props) {
   const totalItems = cartItemCount(lines);
   const total = lines.reduce((acc, line) => acc + calcSubtotal(line.product, line.quantity), 0);
 
+  // Mantiene el badge de la navbar sincronizado sin duplicar el carrito.
+  useEffect(() => {
+    dispatchStoreEvent<CartCountDetail>(CART_COUNT_EVENT, { count: totalItems });
+  }, [totalItems]);
+
   const featureChips = [
     features.variants_enabled ? "Talles y colores" : null,
     features.custom_notes ? "Aclaraciones por ítem" : null,
@@ -191,52 +229,96 @@ export default function StoreCatalog({ store }: Props) {
   ].filter((chip): chip is string => Boolean(chip));
 
   return (
-    <div id="catalogo" className="flex scroll-mt-24 flex-col space-y-5 pb-20">
-      <div
-        id="nosotros"
-        className={`scroll-mt-24 overflow-hidden rounded-2xl bg-gradient-to-br ${HERO_GRADIENTS[settings.business_type]} px-5 py-6 text-white shadow-lg sm:px-7`}
-      >
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-white/20 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide backdrop-blur">
-            {BUSINESS_TYPE_LABELS[settings.business_type]}
-          </span>
-          <span className="flex items-center gap-1 text-[11px] font-medium text-white/90">
-            <Sparkles size={12} /> Catálogo online
-          </span>
-        </div>
-        <h1 className="mt-3 text-2xl font-extrabold tracking-tight sm:text-3xl">{store.subtitle || store.name}</h1>
-        <p className="mt-1 max-w-2xl text-sm text-white/90">{store.slogan}</p>
-        {featureChips.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-1.5">
-            {featureChips.map((chip) => (
-              <span key={chip} className="rounded-full bg-black/15 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur">
-                {chip}
-              </span>
-            ))}
+    <div
+      id="catalogo"
+      className={
+        isBoutique
+          ? "flex scroll-mt-24 flex-col gap-8 pb-24 pt-16 md:pt-24"
+          : "flex scroll-mt-24 flex-col space-y-5 pb-20"
+      }
+    >
+      {!isBoutique && (
+        <div
+          id="nosotros"
+          className={`scroll-mt-24 overflow-hidden rounded-2xl bg-gradient-to-br ${HERO_GRADIENTS[settings.business_type]} px-5 py-6 text-white shadow-lg sm:px-7`}
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full bg-white/20 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide backdrop-blur">
+              {BUSINESS_TYPE_LABELS[settings.business_type]}
+            </span>
+            <span className="flex items-center gap-1 text-[11px] font-medium text-white/90">
+              <Sparkles size={12} /> Catálogo online
+            </span>
           </div>
+          <h1 className="mt-3 text-2xl font-extrabold tracking-tight sm:text-3xl">{store.subtitle || store.name}</h1>
+          <p className="mt-1 max-w-2xl text-sm text-white/90">{store.slogan}</p>
+          {featureChips.length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-1.5">
+              {featureChips.map((chip) => (
+                <span key={chip} className="rounded-full bg-black/15 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur">
+                  {chip}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div
+        className={
+          isBoutique
+            ? "flex flex-wrap items-baseline justify-between gap-3"
+            : "flex items-center justify-between gap-3"
+        }
+      >
+        <div
+          className={
+            isBoutique
+              ? "[font-family:var(--store-font-body)] text-[11px] uppercase leading-none tracking-[0.16em] text-[var(--store-ink-muted)]"
+              : "text-sm text-neutral-500 dark:text-neutral-400"
+          }
+        >
+          {loading
+            ? "Cargando catálogo..."
+            : isBoutique
+              ? `${filtered.length} ${filtered.length === 1 ? "pieza" : "piezas"}`
+              : `${products.length} productos disponibles`}
+        </div>
+
+        {!isBoutique && (
+          <button
+            type="button"
+            onClick={() => configured && void load()}
+            className="flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-sm text-neutral-600 hover:text-neutral-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:text-white"
+          >
+            <RefreshCw size={14} /> Actualizar
+          </button>
         )}
       </div>
 
-      <div className="flex items-center justify-between gap-3">
-        <div className="text-sm text-neutral-500 dark:text-neutral-400">
-          {loading ? "Cargando catálogo..." : `${products.length} productos disponibles`}
-        </div>
-        <button
-          type="button"
-          onClick={() => configured && void load()}
-          className="flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-sm text-neutral-600 hover:text-neutral-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:text-white"
-        >
-          <RefreshCw size={14} /> Actualizar
-        </button>
-      </div>
+      {isBoutique && query.trim() && (
+        <p className="-mt-4 [font-family:var(--store-font-body)] text-[11px] uppercase leading-none tracking-[0.14em] text-[var(--store-ink-muted)]">
+          Resultados para «{query.trim()}»
+        </p>
+      )}
 
       {notice && (
-        <div className="flex items-start justify-between gap-3 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800 dark:border-green-900 dark:bg-green-950/40 dark:text-green-300">
+        <div
+          className={
+            isBoutique
+              ? "flex items-start justify-between gap-3 border-y border-[var(--store-divider)] py-3 [font-family:var(--store-font-body)] text-sm text-[var(--store-ink)]"
+              : "flex items-start justify-between gap-3 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800 dark:border-green-900 dark:bg-green-950/40 dark:text-green-300"
+          }
+        >
           <span>{notice}</span>
           <button
             type="button"
             onClick={() => setNotice(null)}
-            className="text-green-700 hover:text-green-900 dark:text-green-400 dark:hover:text-green-200"
+            className={
+              isBoutique
+                ? "shrink-0 text-[11px] uppercase tracking-[0.1em] text-[var(--store-ink-muted)] hover:text-[var(--store-ink)]"
+                : "text-green-700 hover:text-green-900 dark:text-green-400 dark:hover:text-green-200"
+            }
           >
             Cerrar
           </button>
@@ -244,38 +326,64 @@ export default function StoreCatalog({ store }: Props) {
       )}
 
       {!configured ? (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-center text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
+        <div
+          className={
+            isBoutique
+              ? "border-y border-[var(--store-divider)] py-16 text-center [font-family:var(--store-font-body)] text-sm text-[var(--store-ink-muted)]"
+              : "rounded-lg border border-amber-200 bg-amber-50 p-6 text-center text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
+          }
+        >
           Estamos preparando el catálogo. Volvé a intentar en unos minutos.
         </div>
       ) : error ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
+        <div
+          className={
+            isBoutique
+              ? "border-y border-[var(--store-divider)] py-16 text-center [font-family:var(--store-font-body)] text-sm text-[var(--store-ink)]"
+              : "rounded-lg border border-red-200 bg-red-50 p-6 text-center text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300"
+          }
+        >
           {error}
         </div>
       ) : loading ? (
-        <div className="flex items-center justify-center gap-2 py-20 text-neutral-500 dark:text-neutral-400">
-          <Loader2 className="h-5 w-5 animate-spin" /> Cargando productos...
+        <div
+          className={
+            isBoutique
+              ? "flex items-center justify-center gap-2 py-32 [font-family:var(--store-font-body)] text-[11px] uppercase tracking-[0.16em] text-[var(--store-ink-muted)]"
+              : "flex items-center justify-center gap-2 py-20 text-neutral-500 dark:text-neutral-400"
+          }
+        >
+          <Loader2 className="h-5 w-5 animate-spin" strokeWidth={isBoutique ? 1.5 : undefined} /> Cargando productos...
         </div>
       ) : (
         <>
-          <div className="space-y-3">
-            <SearchBar
-              value={query}
-              onChange={(value) => {
-                setQuery(value);
-                setVisible(PAGE_SIZE);
-              }}
-            />
-            <CategoryTabs
-              categories={categories}
-              active={category}
-              onChange={(id) => {
-                setCategory(id);
-                setVisible(PAGE_SIZE);
-              }}
-            />
-          </div>
+          {!isBoutique && (
+            <div className="space-y-3">
+              <SearchBar
+                value={query}
+                onChange={(value) => {
+                  setQuery(value);
+                  setVisible(PAGE_SIZE);
+                }}
+              />
+              <CategoryTabs
+                categories={categories}
+                active={category}
+                onChange={(id) => {
+                  setCategory(id);
+                  setVisible(PAGE_SIZE);
+                }}
+              />
+            </div>
+          )}
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          <div
+            className={
+              isBoutique
+                ? "grid grid-cols-2 gap-x-4 gap-y-12 sm:grid-cols-2 lg:grid-cols-3"
+                : "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
+            }
+          >
             {filtered.slice(0, visible).map((product) => {
               const inCart = lines
                 .filter((line) => line.product.id === product.id)
@@ -293,14 +401,21 @@ export default function StoreCatalog({ store }: Props) {
                     features.variants_enabled &&
                     (product.sizes.length > 0 || product.colors.length > 0)
                   }
+                  layout={isBoutique ? "boutique" : "retail"}
                 />
               );
             })}
           </div>
 
           {filtered.length === 0 && (
-            <p className="py-10 text-center text-neutral-500 dark:text-neutral-400">
-              No encontramos productos con ese criterio.
+            <p
+              className={
+                isBoutique
+                  ? "py-24 text-center [font-family:var(--store-font-heading)] text-[24px] leading-[1.2] text-[var(--store-ink)]"
+                  : "py-10 text-center text-neutral-500 dark:text-neutral-400"
+              }
+            >
+              No encontramos {isBoutique ? "piezas" : "productos"} con ese criterio.
             </p>
           )}
 
@@ -309,7 +424,11 @@ export default function StoreCatalog({ store }: Props) {
               <button
                 type="button"
                 onClick={() => setVisible((v) => v + PAGE_SIZE)}
-                className="rounded-lg border border-neutral-300 bg-white px-5 py-2 text-sm font-medium text-neutral-700 hover:text-neutral-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:text-white"
+                className={
+                  isBoutique
+                    ? "[font-family:var(--store-font-body)] text-[11px] font-medium uppercase leading-none tracking-[0.14em] text-[var(--store-ink)] underline decoration-[var(--store-divider)] decoration-1 underline-offset-8 transition-colors duration-300 hover:decoration-[var(--store-ink)] motion-reduce:transition-none"
+                    : "rounded-lg border border-neutral-300 bg-white px-5 py-2 text-sm font-medium text-neutral-700 hover:text-neutral-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:text-white"
+                }
               >
                 Cargar más ({filtered.length - visible} restantes)
               </button>
@@ -318,14 +437,16 @@ export default function StoreCatalog({ store }: Props) {
         </>
       )}
 
-      <button
-        type="button"
-        onClick={() => setCartOpen(true)}
-        className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full bg-brand-solid px-5 py-3 font-semibold text-white shadow-lg transition-colors hover:bg-brand-accent"
-      >
-        <ShoppingCart size={20} />
-        {totalItems > 0 ? `${totalItems} · ${formatARS(total)}` : "Carrito"}
-      </button>
+      {!isBoutique && (
+        <button
+          type="button"
+          onClick={() => setCartOpen(true)}
+          className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full bg-brand-solid px-5 py-3 font-semibold text-white shadow-lg transition-colors hover:bg-brand-accent"
+        >
+          <ShoppingCart size={20} />
+          {totalItems > 0 ? `${totalItems} · ${formatARS(total)}` : "Carrito"}
+        </button>
+      )}
 
       {selected && (
         <ProductDetailModal
