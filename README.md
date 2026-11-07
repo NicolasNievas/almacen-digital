@@ -44,6 +44,7 @@ La landing corporativa está en `/` y el panel maestro (solo superadmin) en
    supabase/005_fix_security_grants.sql
    supabase/006_multitenant_saas.sql   <-- arquitectura SaaS
    supabase/007_user_stores_permissions.sql   <-- roles por tienda
+   supabase/008_ui_layouts.sql   <-- diseño visual por tenant
    ```
 
    Si la base ya existía con las migraciones 001–005, ejecutar **solo**
@@ -81,6 +82,15 @@ La landing corporativa está en `/` y el panel maestro (solo superadmin) en
     "pos_enabled": true,
     "stock_alerts": true,
     "custom_notes": false
+  },
+  "design": {
+    "storefront_layout": "boutique",
+    "admin_layout": "sidebar-fixed",
+    "theme": {
+      "colors": { "primary": "#FAD4D8", "background": "#FAF9F6" },
+      "fonts": { "heading": "Playfair Display", "body": "Inter" },
+      "ui": { "radius": "0.5rem", "shadows": "soft" }
+    }
   }
 }
 ```
@@ -89,6 +99,9 @@ Valores permitidos:
 
 - `business_type`: `MAYORISTA` | `GASTRONOMY` | `CLOTHING`
 - `checkout_type`: `WHATSAPP` | `MERCADO_PAGO`
+- `design.storefront_layout`: `boutique` | `retail`
+- `design.admin_layout`: `sidebar-fixed` | `navbar-top`
+- `design.theme.ui.shadows`: `soft` | `sharp` | `none`
 
 La UI se adapta automáticamente:
 

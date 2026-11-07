@@ -1,4 +1,52 @@
-import type { BusinessType, CheckoutType, StoreSettings } from "./types";
+import type {
+  AdminLayout,
+  BusinessType,
+  CheckoutType,
+  StoreDesign,
+  StoreSettings,
+  StorefrontLayout,
+  StoreShadows,
+  StoreTheme,
+} from "./types";
+
+export const STOREFRONT_LAYOUTS: readonly StorefrontLayout[] = ["boutique", "retail"];
+export const ADMIN_LAYOUTS: readonly AdminLayout[] = ["sidebar-fixed", "navbar-top"];
+export const STORE_SHADOWS: readonly StoreShadows[] = ["soft", "sharp", "none"];
+
+/**
+ * Paletas base por layout. Son el espejo exacto de los defaults de
+ * `normalize_store_design` en la migración 008.
+ */
+const DEFAULT_THEMES: Record<StorefrontLayout, StoreTheme> = {
+  retail: {
+    colors: { primary: "#1E40AF", background: "#FAFAFA" },
+    fonts: { heading: "Inter", body: "Inter" },
+    ui: { radius: "0.375rem", shadows: "soft" },
+  },
+  boutique: {
+    colors: { primary: "#FAD4D8", background: "#FAF9F6" },
+    fonts: { heading: "Playfair Display", body: "Inter" },
+    ui: { radius: "0.5rem", shadows: "soft" },
+  },
+};
+
+/** Diseño por defecto para una tienda nueva según su rubro. */
+export function defaultDesignForBusinessType(businessType: BusinessType): StoreDesign {
+  const storefrontLayout: StorefrontLayout = businessType === "CLOTHING" ? "boutique" : "retail";
+  const theme = DEFAULT_THEMES[storefrontLayout];
+
+  return {
+    storefront_layout: storefrontLayout,
+    admin_layout: storefrontLayout === "boutique" ? "sidebar-fixed" : "navbar-top",
+    theme: {
+      colors: { ...theme.colors },
+      fonts: { ...theme.fonts },
+      ui: { ...theme.ui },
+    },
+  };
+}
+
+export const DEFAULT_STORE_DESIGN: StoreDesign = defaultDesignForBusinessType("MAYORISTA");
 
 export const DEFAULT_STORE_SETTINGS: StoreSettings = {
   business_type: "MAYORISTA",
@@ -14,10 +62,15 @@ export const DEFAULT_STORE_SETTINGS: StoreSettings = {
     stock_alerts: true,
     custom_notes: false,
   },
+  design: DEFAULT_STORE_DESIGN,
 };
 
-const BUSINESS_TYPES: BusinessType[] = ["MAYORISTA", "GASTRONOMY", "CLOTHING"];
-const CHECKOUT_TYPES: CheckoutType[] = ["WHATSAPP", "MERCADO_PAGO"];
+const BUSINESS_TYPES: readonly BusinessType[] = ["MAYORISTA", "GASTRONOMY", "CLOTHING"];
+const CHECKOUT_TYPES: readonly CheckoutType[] = ["WHATSAPP", "MERCADO_PAGO"];
+
+const HEX_COLOR = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+const FONT_NAME = /^[A-Za-z0-9][A-Za-z0-9 -]{0,63}$/;
+const CSS_LENGTH = /^(0|[0-9]+(\.[0-9]+)?(px|rem|em|%))$/;
 
 function bool(value: unknown, fallback: boolean): boolean {
   return typeof value === "boolean" ? value : fallback;
@@ -27,6 +80,87 @@ function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : {};
+}
+
+function asText(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
+function isStorefrontLayout(value: string | null): value is StorefrontLayout {
+  return STOREFRONT_LAYOUTS.includes(value as StorefrontLayout);
+}
+
+function isAdminLayout(value: string | null): value is AdminLayout {
+  return ADMIN_LAYOUTS.includes(value as AdminLayout);
+}
+
+function isStoreShadow(value: string | null): value is StoreShadows {
+  return STORE_SHADOWS.includes(value as StoreShadows);
+}
+
+function hexColor(value: unknown, fallback: string): string {
+  const text = asText(value);
+  return text && HEX_COLOR.test(text) ? text : fallback;
+}
+
+function fontName(value: unknown, fallback: string): string {
+  const text = asText(value);
+  return text && FONT_NAME.test(text) ? text : fallback;
+}
+
+function cssLength(value: unknown, fallback: string): string {
+  const text = asText(value);
+  return text && CSS_LENGTH.test(text) ? text : fallback;
+}
+
+/**
+ * Normaliza el bloque `design` con la misma semántica que Postgres.
+ * El layout resuelto define la paleta base cuando faltan tokens.
+ */
+export function normalizeDesign(raw: unknown, businessType: BusinessType): StoreDesign {
+  const value = asRecord(raw);
+  const requestedLayout = asText(value.storefront_layout);
+
+  const storefrontLayout: StorefrontLayout = isStorefrontLayout(requestedLayout)
+    ? requestedLayout
+    : businessType === "CLOTHING"
+      ? "boutique"
+      : "retail";
+
+  const requestedAdmin = asText(value.admin_layout);
+  const adminLayout: AdminLayout = isAdminLayout(requestedAdmin)
+    ? requestedAdmin
+    : storefrontLayout === "boutique"
+      ? "sidebar-fixed"
+      : "navbar-top";
+
+  const theme = asRecord(value.theme);
+  const colors = asRecord(theme.colors);
+  const fonts = asRecord(theme.fonts);
+  const ui = asRecord(theme.ui);
+  const fallback = DEFAULT_THEMES[storefrontLayout];
+  const requestedShadows = asText(ui.shadows);
+
+  return {
+    storefront_layout: storefrontLayout,
+    admin_layout: adminLayout,
+    theme: {
+      colors: {
+        primary: hexColor(colors.primary, fallback.colors.primary),
+        background: hexColor(colors.background, fallback.colors.background),
+      },
+      fonts: {
+        heading: fontName(fonts.heading, fallback.fonts.heading),
+        body: fontName(fonts.body, fallback.fonts.body),
+      },
+      ui: {
+        radius: cssLength(ui.radius, fallback.ui.radius),
+        shadows: isStoreShadow(requestedShadows) ? requestedShadows : fallback.ui.shadows,
+      },
+    },
+  };
 }
 
 /**
@@ -68,6 +202,7 @@ export function normalizeSettings(raw: unknown): StoreSettings {
       stock_alerts: bool(features.stock_alerts, DEFAULT_STORE_SETTINGS.features.stock_alerts),
       custom_notes: bool(features.custom_notes, DEFAULT_STORE_SETTINGS.features.custom_notes),
     },
+    design: normalizeDesign(value.design, businessType),
   };
 }
 

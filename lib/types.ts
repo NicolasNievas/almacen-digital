@@ -9,6 +9,41 @@ export type CheckoutType = "WHATSAPP" | "MERCADO_PAGO";
 
 export type FulfillmentType = "PICKUP" | "DELIVERY";
 
+/** Experiencia visual del catálogo público. */
+export type StorefrontLayout = "boutique" | "retail";
+
+/** Estructura del panel de administración del tenant. */
+export type AdminLayout = "sidebar-fixed" | "navbar-top";
+
+/** Catálogo cerrado de sombras que el frontend sabe renderizar. */
+export type StoreShadows = "soft" | "sharp" | "none";
+
+/** Tokens visuales de una tienda. Se inyectan como CSS variables. */
+export type StoreTheme = {
+  /** Colores en formato hex (`#RGB` o `#RRGGBB`). */
+  colors: {
+    primary: string;
+    background: string;
+  };
+  /** Deben existir en el registro de fuentes de `lib/store-fonts.ts`. */
+  fonts: {
+    heading: string;
+    body: string;
+  };
+  /** `radius`: longitud CSS (`0.5rem`, `12px`, ...). */
+  ui: {
+    radius: string;
+    shadows: StoreShadows;
+  };
+};
+
+/** Bloque `settings.design`: layouts + tema por tenant. */
+export type StoreDesign = {
+  storefront_layout: StorefrontLayout;
+  admin_layout: AdminLayout;
+  theme: StoreTheme;
+};
+
 /** Configuración dinámica guardada en `stores.settings` (JSONB). */
 export type StoreSettings = {
   business_type: BusinessType;
@@ -24,6 +59,8 @@ export type StoreSettings = {
     stock_alerts: boolean;
     custom_notes: boolean;
   };
+  /** Diseño por tenant. La DB lo normaliza; TypeScript lo exige. */
+  design: StoreDesign;
 };
 
 /** Tienda / tenant. */
