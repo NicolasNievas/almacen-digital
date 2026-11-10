@@ -212,7 +212,7 @@ export default function PanelHomePage() {
                     <p className={ADMIN_EYEBROW}>{card.label}</p>
                     <card.icon size={15} strokeWidth={1.5} className="shrink-0 text-[var(--admin-faint)]" />
                   </div>
-                  <p className="mt-7 [font-family:var(--store-font-heading)] text-[clamp(24px,2.4vw,34px)] font-normal leading-none tracking-[-0.01em] tabular-nums text-[var(--admin-ink)]">
+                  <p className="mt-7 [font-family:var(--admin-display-font)] text-[clamp(24px,2.4vw,34px)] font-normal leading-none tracking-[-0.01em] tabular-nums text-[var(--admin-ink)]">
                     {card.value}
                   </p>
                   <div className="mt-4 flex items-center justify-between gap-3">

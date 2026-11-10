@@ -101,7 +101,7 @@ export default function CategoryManager({ categories, storeId, onClose, onSaved 
         <div className="flex items-start justify-between gap-4 border-b border-[var(--admin-line)] px-6 py-5">
           <div>
             <p className={ADMIN_EYEBROW}>Catálogo</p>
-            <h2 data-display className="mt-2 [font-family:var(--store-font-heading)] text-[26px] font-normal leading-[1.1] text-[var(--admin-ink)]">
+            <h2 data-display className="mt-2 [font-family:var(--admin-display-font)] text-[26px] font-normal leading-[1.1] text-[var(--admin-ink)]">
               Categorías
             </h2>
           </div>

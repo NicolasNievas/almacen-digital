@@ -5,6 +5,7 @@ import AdminHeader from "@/components/admin/AdminHeader";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import StoreThemeScope from "@/components/store/StoreThemeScope";
 import { requireAdmin } from "@/lib/auth";
+import { adminThemeForLayout } from "@/lib/store-design";
 import { getStoreBySlug, listStores, listUserStores } from "@/lib/supabase/stores";
 
 // El layout lee cookies (sesión de Supabase) = dato dinámico, por lo que el
@@ -59,11 +60,13 @@ export default async function StoreAdminLayout({
   if (!store) notFound();
 
   const fixedSidebar = store.settings.design.admin_layout === "sidebar-fixed";
+  const adminTheme = adminThemeForLayout(store.settings.design.storefront_layout);
 
   return (
     <StoreThemeScope store={store} className="flex flex-1 flex-col">
       <div
         data-admin
+        data-admin-theme={adminTheme}
         className="flex min-h-screen flex-col bg-[var(--admin-canvas)] text-[var(--admin-ink)] print:min-h-0 print:bg-white"
       >
         {fixedSidebar ? (
@@ -73,7 +76,7 @@ export default async function StoreAdminLayout({
               activeStore={store}
               isSuperadmin={session.isSuperadmin}
             />
-            <main className="flex-1 lg:pl-[280px] print:pl-0">
+            <main className="flex-1 lg:pl-72 print:pl-0">
               <div className="mx-auto w-full max-w-[1600px] px-5 py-8 md:px-8 lg:px-12 lg:py-12 print:max-w-none print:px-0 print:py-0">
                 {children}
               </div>

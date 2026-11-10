@@ -55,7 +55,7 @@ export default function ConfirmDialog({
             />
             <div className="space-y-2">
               <p className={ADMIN_EYEBROW}>Confirmación</p>
-              <h2 data-display className="[font-family:var(--store-font-heading)] text-[22px] font-normal leading-[1.15] text-[var(--admin-ink)]">
+              <h2 data-display className="[font-family:var(--admin-display-font)] text-[22px] font-normal leading-[1.15] text-[var(--admin-ink)]">
                 {title}
               </h2>
               <div className="text-[13px] leading-6 text-[var(--admin-muted)]">{message}</div>

@@ -57,39 +57,41 @@ body {
 }
 
 /*
- * El back-office usa Playfair solo en los títulos de página y de modal
- * (`data-display`). El resto de los encabezados —gráficos, tablas, tickets—
- * se leen en la tipografía de cuerpo para no perder claridad.
+ * Títulos del back-office.
+ *
+ * La fuente display (Playfair) se activa solo en el tema editorial: los
+ * tenants retail conservan la tipografía de cuerpo también en los títulos.
+ * `data-display` marca los títulos de página y de modal.
  */
 [data-admin] :where(h1, h2, h3, h4, h5, h6) {
-  font-family: var(--store-font-body, var(--font-geist-sans), Arial, Helvetica, sans-serif);
+  font-family: var(--admin-body-font, var(--font-geist-sans), Arial, Helvetica, sans-serif);
 }
 
 [data-admin] :where(h1, h2, h3, h4, h5, h6)[data-display] {
-  font-family: var(--store-font-heading, var(--font-geist-sans), Arial, Helvetica, sans-serif);
+  font-family: var(--admin-display-font, var(--font-geist-sans), Arial, Helvetica, sans-serif);
 }
 
 /*
- * Tokens del back-office editorial.
+ * Tokens base del back-office: utilitarios y neutros.
  *
- * El panel no usa los grises de Tailwind: hereda canvas, tinta, separadores
- * y acento del tenant (inyectados por `StoreThemeScope`) y los reescribe con
- * un grafito cálido cuando `<html>` está en modo oscuro. Así el admin de
- * Aura mantiene la paleta del DESIGN.md y cualquier otro tenant conserva la
- * suya sin ramas de código.
+ * No usan los grises de Tailwind ni la paleta editorial: heredan canvas,
+ * tinta, separadores y acento del tenant (inyectados por `StoreThemeScope`),
+ * de modo que AG Mayorista conserva su lectura de almacén.
  */
 [data-admin] {
-  --admin-canvas: var(--store-background, #faf9f6);
-  --admin-surface: var(--store-surface, #f4f3ef);
+  --admin-canvas: var(--store-background, #f7f7f8);
+  --admin-surface: var(--store-surface, #efeff1);
   --admin-sunken: color-mix(in srgb, var(--admin-surface) 72%, var(--admin-canvas));
-  --admin-ink: var(--store-ink, #1a1918);
-  --admin-muted: var(--store-ink-muted, #737373);
+  --admin-ink: var(--store-ink, #18181b);
+  --admin-muted: var(--store-ink-muted, #5f5f68);
   --admin-faint: color-mix(in srgb, var(--admin-muted) 90%, var(--admin-ink));
-  --admin-line: var(--store-divider, #e5e5e5);
+  --admin-line: var(--store-divider, #e2e2e5);
   --admin-line-strong: color-mix(in srgb, var(--admin-line) 62%, var(--admin-ink));
-  --admin-accent: var(--store-primary, #fad4d8);
-  --admin-accent-hover: var(--store-primary-hover, #f5c2c7);
-  --admin-on-accent: var(--store-on-primary, #1a1918);
+  --admin-accent: var(--store-primary, #1e40af);
+  --admin-accent-hover: var(--store-primary-hover, #1d4ed8);
+  --admin-on-accent: var(--store-on-primary, #ffffff);
+  --admin-body-font: var(--store-font-body, var(--font-geist-sans), Arial, Helvetica, sans-serif);
+  --admin-display-font: var(--admin-body-font);
   --admin-positive: #3d6b52;
   --admin-warning: #8a641f;
   --admin-danger: #a03a3a;
@@ -97,7 +99,40 @@ body {
   color-scheme: light;
 }
 
+/*
+ * Override editorial: solo tiendas con `storefront_layout === "boutique"`.
+ * Aura recupera sus superficies cálidas y Playfair en los títulos display;
+ * ningún tenant retail hereda estos valores.
+ */
+[data-admin][data-admin-theme="editorial"] {
+  --admin-canvas: var(--store-background, #faf9f6);
+  --admin-surface: #f4f3ef;
+  --admin-ink: #1a1918;
+  --admin-muted: #6e6e6e;
+  --admin-line: #e5e5e5;
+  --admin-display-font: var(--store-font-heading, var(--font-geist-sans), Arial, Helvetica, sans-serif);
+}
+
 html.dark [data-admin] {
+  --admin-canvas: #131316;
+  --admin-surface: #1b1b1f;
+  --admin-sunken: #17171a;
+  --admin-ink: #f2f2f4;
+  --admin-muted: #a3a3ad;
+  --admin-faint: #8a8a93;
+  --admin-line: #2d2d33;
+  --admin-line-strong: #3d3d45;
+  --admin-accent: color-mix(in srgb, var(--store-primary, #1e40af) 84%, #131316);
+  --admin-accent-hover: color-mix(in srgb, var(--store-primary, #1e40af) 94%, #131316);
+  --admin-on-accent: var(--store-on-primary, #ffffff);
+  --admin-positive: #8fb99b;
+  --admin-warning: #d6b06a;
+  --admin-danger: #e08f8f;
+  --admin-on-danger: #141311;
+  color-scheme: dark;
+}
+
+html.dark [data-admin][data-admin-theme="editorial"] {
   --admin-canvas: #121210;
   --admin-surface: #1a1a17;
   --admin-sunken: #171715;
@@ -106,14 +141,6 @@ html.dark [data-admin] {
   --admin-faint: #8a867e;
   --admin-line: #2c2b28;
   --admin-line-strong: #3a3833;
-  --admin-accent: color-mix(in srgb, var(--store-primary, #fad4d8) 70%, #121210);
-  --admin-accent-hover: color-mix(in srgb, var(--store-primary, #fad4d8) 84%, #121210);
-  --admin-on-accent: #141311;
-  --admin-positive: #8fb99b;
-  --admin-warning: #d6b06a;
-  --admin-danger: #e08f8f;
-  --admin-on-danger: #141311;
-  color-scheme: dark;
 }
 
 @media print {

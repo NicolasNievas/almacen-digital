@@ -19,7 +19,7 @@ export default function AdminPageHeader({ eyebrow = "Administración", title, de
         <p className="text-[10px] font-medium uppercase leading-none tracking-[0.24em] text-[var(--admin-faint)]">
           {eyebrow}
         </p>
-        <h1 data-display className="mt-3 [font-family:var(--store-font-heading)] text-[clamp(28px,3.2vw,42px)] font-normal leading-[1.08] tracking-[-0.01em] text-[var(--admin-ink)]">
+        <h1 data-display className="mt-3 text-[clamp(28px,3.2vw,42px)] font-normal leading-[1.08] tracking-[-0.01em] text-[var(--admin-ink)]">
           {title}
         </h1>
         {description && (

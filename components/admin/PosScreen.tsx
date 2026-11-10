@@ -245,7 +245,7 @@ export default function PosScreen({ products, onCheckout }: Props) {
 
         <div className="mt-6 flex items-baseline justify-between gap-4 border-t border-[var(--admin-line)] pt-5">
           <span className={ADMIN_EYEBROW}>Total</span>
-          <span className="[font-family:var(--store-font-heading)] text-[32px] font-normal leading-none tabular-nums tracking-[-0.01em] text-[var(--admin-ink)]">
+          <span className="[font-family:var(--admin-display-font)] text-[32px] font-normal leading-none tabular-nums tracking-[-0.01em] text-[var(--admin-ink)]">
             {formatARS(total)}
           </span>
         </div>
