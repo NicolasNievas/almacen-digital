@@ -3,7 +3,29 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import Image from "next/image";
-import { Check, ChevronLeft, ChevronRight, ClipboardList, Loader2, Package, Printer, RefreshCw, X } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardList,
+  Loader2,
+  Package,
+  Printer,
+  RefreshCw,
+  X,
+} from "lucide-react";
+import AdminPageHeader from "@/components/admin/AdminPageHeader";
+import {
+  ADMIN_ACTION_GHOST,
+  ADMIN_EMPTY_TEXT,
+  ADMIN_EMPTY_TITLE,
+  ADMIN_ERROR,
+  ADMIN_EYEBROW,
+  ADMIN_LOADING,
+  ADMIN_ROW,
+  ADMIN_TABLE_HEAD,
+} from "@/lib/admin-ui";
 import { resolveAdminStoreSlug } from "@/lib/admin-store";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { fetchAdminStore, fetchOrdersWithItems, fetchProducts } from "@/lib/supabase/queries";
@@ -11,10 +33,16 @@ import { printTicket, type TicketItem } from "@/lib/printTicket";
 import { formatARS } from "@/lib/pricing";
 import type { OrderItemRow, OrderWithItems, Product } from "@/lib/types";
 
-const STATUS_STYLES: Record<string, string> = {
-  PENDING: "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300",
-  COMPLETED: "bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-300",
-  CANCELLED: "bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400",
+const STATUS_DOT: Record<string, string> = {
+  PENDING: "bg-[var(--admin-warning)]",
+  COMPLETED: "bg-[var(--admin-positive)]",
+  CANCELLED: "bg-[var(--admin-faint)]",
+};
+
+const STATUS_TEXT: Record<string, string> = {
+  PENDING: "text-[var(--admin-warning)]",
+  COMPLETED: "text-[var(--admin-positive)]",
+  CANCELLED: "text-[var(--admin-muted)]",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -23,7 +51,23 @@ const STATUS_LABELS: Record<string, string> = {
   CANCELLED: "Cancelado",
 };
 
+const FILTERS = [
+  { key: "ALL", label: "Todos" },
+  { key: "PENDING", label: "Pendientes" },
+  { key: "COMPLETED", label: "Completados" },
+  { key: "CANCELLED", label: "Cancelados" },
+] as const;
+
 const PAGE_SIZE = 10;
+
+const MINI_PRIMARY =
+  "inline-flex items-center gap-1.5 whitespace-nowrap rounded-md bg-[var(--admin-accent)] px-2.5 py-1.5 text-[10px] font-medium uppercase leading-none tracking-[0.1em] text-[var(--admin-on-accent)] transition-colors duration-200 hover:bg-[var(--admin-accent-hover)] disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none";
+
+const MINI_GHOST =
+  "inline-flex items-center gap-1.5 whitespace-nowrap rounded-md border border-[var(--admin-line-strong)] px-2.5 py-1.5 text-[10px] font-medium uppercase leading-none tracking-[0.1em] text-[var(--admin-muted)] transition-colors duration-200 hover:border-[var(--admin-ink)] hover:text-[var(--admin-ink)] disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none";
+
+const MINI_ICON =
+  "inline-flex h-8 w-8 shrink-0 items-center justify-center text-[var(--admin-muted)] transition-colors duration-200 hover:text-[var(--admin-ink)] disabled:opacity-40 motion-reduce:transition-none";
 
 function formatDate(iso: string): string {
   const date = new Date(iso);
@@ -34,6 +78,7 @@ function formatDate(iso: string): string {
     year: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
+    hour12: false,
   });
 }
 
@@ -94,6 +139,7 @@ export default function PedidosPage() {
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string>("ALL");
   // La página se reinicia sola al cambiar de tienda sin efectos: si el slug
   // guardado no coincide con el activo, se usa la primera página.
   const [pagination, setPagination] = useState({ slug: storeSlug, page: 1 });
@@ -163,202 +209,285 @@ export default function PedidosPage() {
     }
   };
 
-  const totalPages = Math.max(1, Math.ceil(orders.length / PAGE_SIZE));
+  const filtered = useMemo(
+    () => (statusFilter === "ALL" ? orders : orders.filter((o) => o.status === statusFilter)),
+    [orders, statusFilter],
+  );
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const current = Math.min(page, totalPages);
-  const pageOrders = orders.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
+  const pageOrders = filtered.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
+
+  const countFor = (key: string) =>
+    key === "ALL" ? orders.length : orders.filter((o) => o.status === key).length;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-neutral-900 dark:text-neutral-100">Pedidos</h1>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">
-            Gestión de pedidos web pendientes de confirmación y registro de ventas presenciales.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => configured && void load()}
-          className="flex shrink-0 items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-sm text-neutral-600 hover:text-neutral-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:text-white"
-        >
-          <RefreshCw size={14} /> Actualizar
-        </button>
-      </div>
+    <div className="space-y-8">
+      <AdminPageHeader
+        eyebrow="Operaciones"
+        title="Pedidos"
+        description="Pedidos web pendientes de confirmación y ventas presenciales registradas en caja."
+        actions={
+          <button
+            type="button"
+            onClick={() => configured && void load()}
+            className={ADMIN_ACTION_GHOST}
+          >
+            <RefreshCw size={14} strokeWidth={1.5} /> Actualizar
+          </button>
+        }
+      />
 
-      {error && <p className="rounded bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">{error}</p>}
-
-      {!configured && (
-        <p className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-center text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
-          No pudimos cargar los pedidos en este momento. Volvé a intentar en unos minutos.
+      {error && (
+        <p className={ADMIN_ERROR} role="alert">
+          {error}
         </p>
       )}
 
-      <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
-        <table className="w-full min-w-[820px] text-sm">
-          <thead className="bg-neutral-50 text-left text-neutral-500 dark:bg-neutral-800/50 dark:text-neutral-400">
-            <tr>
-              <th className="p-3 font-medium">Fecha</th>
-              <th className="p-3 font-medium">Origen</th>
-              <th className="p-3 font-medium">Cliente</th>
-              <th className="p-3 font-medium">Entrega</th>
-              <th className="p-3 font-medium">Pago</th>
-              <th className="p-3 font-medium">Total</th>
-              <th className="p-3 font-medium">Estado</th>
-              <th className="p-3 font-medium">Acciones</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
-            {loading ? (
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[var(--admin-line)] pb-2">
+        <div className="flex flex-wrap items-center gap-7">
+          {FILTERS.map((filter) => {
+            const active = statusFilter === filter.key;
+            return (
+              <button
+                key={filter.key}
+                type="button"
+                onClick={() => {
+                  setStatusFilter(filter.key);
+                  setPage(1);
+                  setExpanded(null);
+                }}
+                aria-pressed={active}
+                className={`relative pb-2 text-[10px] font-medium uppercase leading-none tracking-[0.16em] transition-colors duration-200 motion-reduce:transition-none ${
+                  active
+                    ? "text-[var(--admin-ink)] after:absolute after:inset-x-0 after:-bottom-[9px] after:h-px after:bg-[var(--admin-ink)]"
+                    : "text-[var(--admin-muted)] hover:text-[var(--admin-ink)]"
+                }`}
+              >
+                {filter.label}
+                <span aria-hidden="true" className="mx-1.5 text-[var(--admin-line-strong)]">
+                  ·
+                </span>
+                <span className="text-[9px] tabular-nums text-[var(--admin-faint)]">
+                  {countFor(filter.key)}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <p className={ADMIN_EYEBROW}>Ordenados por fecha</p>
+      </div>
+
+      {!configured ? (
+        <div className="border-y border-[var(--admin-line)] py-16">
+          <p className={ADMIN_EMPTY_TITLE}>Pedidos no disponibles</p>
+          <p className={`${ADMIN_EMPTY_TEXT} mt-2`}>
+            No pudimos cargar los pedidos. Volvé a intentar en unos minutos.
+          </p>
+        </div>
+      ) : loading ? (
+        <div className={ADMIN_LOADING}>
+          <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} /> Cargando pedidos
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="border-y border-[var(--admin-line)] py-16">
+          <ClipboardList size={20} strokeWidth={1.5} className="mx-auto mb-4 text-[var(--admin-faint)]" />
+          <p className={ADMIN_EMPTY_TITLE}>
+            {orders.length === 0 ? "Todavía no hay pedidos" : "Sin pedidos en este estado"}
+          </p>
+          <p className={`${ADMIN_EMPTY_TEXT} mt-2`}>
+            {orders.length === 0
+              ? "Las ventas de la tienda y de la caja van a aparecer acá."
+              : "Probá con otro filtro para ver el resto del historial."}
+          </p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[860px] border-collapse">
+            <thead>
               <tr>
-                <td colSpan={8} className="p-10 text-center text-neutral-500 dark:text-neutral-400">
-                  <Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin" />
-                  Cargando pedidos...
-                </td>
+                <th className={`${ADMIN_TABLE_HEAD} pl-0 pr-4`}>Fecha</th>
+                <th className={`${ADMIN_TABLE_HEAD} pr-4`}>Origen</th>
+                <th className={`${ADMIN_TABLE_HEAD} pr-4`}>Cliente</th>
+                <th className={`${ADMIN_TABLE_HEAD} pr-4`}>Entrega</th>
+                <th className={`${ADMIN_TABLE_HEAD} hidden pr-4 2xl:table-cell`}>Pago</th>
+                <th className={`${ADMIN_TABLE_HEAD} pr-4 text-right`}>Total</th>
+                <th className={`${ADMIN_TABLE_HEAD} pr-4`}>Estado</th>
+                <th className={`${ADMIN_TABLE_HEAD} pr-0 text-right`}>Acciones</th>
               </tr>
-            ) : orders.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="p-10 text-center text-neutral-500 dark:text-neutral-400">
-                  <ClipboardList className="mx-auto mb-2 h-8 w-8 text-neutral-300 dark:text-neutral-600" />
-                  Todavía no hay pedidos.
-                </td>
-              </tr>
-            ) : (
-              pageOrders.map((order) => (
-                <Fragment key={order.id}>
-                  <tr className="text-neutral-800 dark:text-neutral-200">
-                    <td className="p-3 whitespace-nowrap text-neutral-500 dark:text-neutral-400">{formatDate(order.created_at)}</td>
-                    <td className="p-3">
-                      <span
-                        className={
-                          order.source === "POS"
-                            ? "rounded bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"
-                            : "rounded bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-950/40 dark:text-green-300"
-                        }
-                      >
-                        {order.source}
-                      </span>
-                    </td>
-                    <td className="p-3">
-                      <span className="block">{order.customer_name ?? "—"}</span>
-                      {order.customer_phone && (
-                        <span className="block text-xs text-neutral-400">{order.customer_phone}</span>
-                      )}
-                    </td>
-                    <td className="p-3 text-neutral-500 dark:text-neutral-400">
-                      {order.source === "POS" ? (
-                        <span className="italic">Venta presencial</span>
-                      ) : order.fulfillment_type === "DELIVERY" ? (
-                        <span className="block max-w-[220px]">
-                          <b className="text-neutral-600 dark:text-neutral-300">Delivery</b>
-                          <span className="block truncate text-xs">{order.delivery_address ?? "—"}</span>
+            </thead>
+            <tbody>
+              {pageOrders.map((order) => {
+                const open = expanded === order.id;
+                const busy = busyId === order.id;
+                return (
+                  <Fragment key={order.id}>
+                    <tr className={ADMIN_ROW}>
+                      <td className="whitespace-nowrap py-4 pl-0 pr-4 text-[12px] tabular-nums text-[var(--admin-muted)]">
+                        {formatDate(order.created_at)}
+                      </td>
+                      <td className="py-4 pr-4">
+                        <span className="text-[10px] font-medium uppercase leading-none tracking-[0.14em] text-[var(--admin-muted)]">
+                          {order.source}
                         </span>
-                      ) : (
-                        <span>
-                          <b className="text-neutral-600 dark:text-neutral-300">Retiro</b>{" "}
-                          {order.pickup_time?.slice(0, 5) ?? "—"}
+                      </td>
+                      <td className="py-4 pr-4">
+                        <span className="block text-[13px] leading-5 text-[var(--admin-ink)]">
+                          {order.customer_name ?? "—"}
                         </span>
-                      )}
-                    </td>
-                    <td className="p-3 text-neutral-500 dark:text-neutral-400">{order.payment_method ?? "—"}</td>
-                    <td className="p-3 font-medium">{formatARS(order.total)}</td>
-                    <td className="p-3">
-                      <span
-                        className={`rounded px-2 py-0.5 text-xs font-medium ${
-                          STATUS_STYLES[order.status] ?? "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300"
-                        }`}
-                      >
-                        {STATUS_LABELS[order.status] ?? order.status}
-                      </span>
-                    </td>
-                    <td className="p-3">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setExpanded(expanded === order.id ? null : order.id)}
-                          className="w-24 shrink-0 text-left text-xs text-neutral-500 underline-offset-2 hover:text-neutral-900 hover:underline dark:text-neutral-400 dark:hover:text-white"
-                        >
-                          {expanded === order.id ? "Ocultar" : `Ver ${order.items.length} item(s)`}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => printOrderTicket(order, productsByName)}
-                          className="flex items-center gap-1 rounded border border-neutral-300 px-2 py-1 text-xs font-medium text-neutral-600 hover:text-neutral-900 dark:border-neutral-700 dark:text-neutral-300 dark:hover:text-white"
-                          aria-label="Imprimir ticket"
-                          title="Imprimir ticket"
-                        >
-                          <Printer size={13} /> Imprimir
-                        </button>
-                        {order.status === "PENDING" && (
-                          <>
-                            <button
-                              type="button"
-                              disabled={busyId === order.id}
-                              onClick={() => void processOrder(order.id, "confirm_order")}
-                              className="flex items-center gap-1 rounded bg-green-600 px-2 py-1 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-40"
-                            >
-                              <Check size={13} /> Confirmar
-                            </button>
-                            <button
-                              type="button"
-                              disabled={busyId === order.id}
-                              onClick={() => void processOrder(order.id, "cancel_order")}
-                              className="flex items-center gap-1 rounded border border-neutral-300 px-2 py-1 text-xs font-medium text-neutral-600 hover:text-red-600 disabled:opacity-40 dark:border-neutral-700 dark:text-neutral-300"
-                            >
-                              <X size={13} /> Cancelar
-                            </button>
-                          </>
+                        {order.customer_phone && (
+                          <span className="block text-[11px] leading-4 text-[var(--admin-faint)]">
+                            {order.customer_phone}
+                          </span>
                         )}
-                      </div>
-                    </td>
-                  </tr>
-                  <tr className="bg-neutral-50 dark:bg-neutral-800/40">
-                    <td colSpan={8} className="px-3 py-2">
-                      {expanded === order.id && (
-                        <div className="w-full my-2 rounded-lg border border-neutral-200 bg-neutral-100 p-3 text-neutral-900 dark:border-neutral-800 dark:bg-neutral-900/60 dark:text-neutral-100">
-                          {(order.notes || order.delivery_address) && (
-                            <div className="mb-3 space-y-1 border-b border-neutral-200 pb-2 text-xs dark:border-neutral-700">
+                      </td>
+                      <td className="py-4 pr-4 text-[12px] leading-5 text-[var(--admin-muted)]">
+                        {order.source === "POS" ? (
+                          <span>Venta presencial</span>
+                        ) : order.fulfillment_type === "DELIVERY" ? (
+                          <span className="block max-w-[220px]">
+                            <span className="text-[var(--admin-ink)]">Delivery</span>
+                            <span className="block truncate text-[11px]">{order.delivery_address ?? "—"}</span>
+                          </span>
+                        ) : (
+                          <span>
+                            <span className="text-[var(--admin-ink)]">Retiro</span>{" "}
+                            {order.pickup_time?.slice(0, 5) ?? "—"}
+                          </span>
+                        )}
+                      </td>
+                      <td className="hidden py-4 pr-4 text-[12px] text-[var(--admin-muted)] 2xl:table-cell">
+                        {order.payment_method ?? "—"}
+                      </td>
+                      <td className="py-4 pr-4 text-right text-[13px] tabular-nums text-[var(--admin-ink)]">
+                        {formatARS(order.total)}
+                      </td>
+                      <td className="py-4 pr-4">
+                        <span
+                          className={`inline-flex items-center gap-2 text-[10px] font-medium uppercase leading-none tracking-[0.12em] ${
+                            STATUS_TEXT[order.status] ?? "text-[var(--admin-muted)]"
+                          }`}
+                        >
+                          <span
+                            className={`h-1.5 w-1.5 rounded-full ${
+                              STATUS_DOT[order.status] ?? "bg-[var(--admin-faint)]"
+                            }`}
+                          />
+                          {STATUS_LABELS[order.status] ?? order.status}
+                        </span>
+                      </td>
+                      <td className="py-4 pl-4 pr-0">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setExpanded(open ? null : order.id)}
+                            aria-expanded={open}
+                            className="inline-flex items-center gap-1 whitespace-nowrap text-[10px] font-medium uppercase leading-none tracking-[0.1em] text-[var(--admin-muted)] transition-colors hover:text-[var(--admin-ink)]"
+                          >
+                            {order.items.length} {order.items.length === 1 ? "ítem" : "ítems"}
+                            <ChevronDown
+                              size={12}
+                              strokeWidth={1.5}
+                              className={`transition-transform duration-200 motion-reduce:transition-none ${open ? "rotate-180" : ""}`}
+                            />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => printOrderTicket(order, productsByName)}
+                            className={MINI_ICON}
+                            aria-label="Imprimir ticket"
+                            title="Imprimir ticket"
+                          >
+                            <Printer size={14} strokeWidth={1.5} />
+                          </button>
+                          {order.status === "PENDING" && (
+                            <>
+                              <button
+                                type="button"
+                                disabled={busy}
+                                onClick={() => void processOrder(order.id, "confirm_order")}
+                                className={MINI_PRIMARY}
+                              >
+                                <Check size={12} strokeWidth={1.5} /> Confirmar
+                              </button>
+                              <button
+                                type="button"
+                                disabled={busy}
+                                onClick={() => void processOrder(order.id, "cancel_order")}
+                                className={`${MINI_GHOST} px-2 hover:border-[var(--admin-danger)] hover:text-[var(--admin-danger)]`}
+                                aria-label={`Cancelar pedido de ${order.customer_name ?? "cliente"}`}
+                                title="Cancelar pedido"
+                              >
+                                <X size={13} strokeWidth={1.5} />
+                              </button>
+                            </>
+                          )}
+                          {busy && (
+                            <Loader2
+                              size={13}
+                              strokeWidth={1.5}
+                              className="animate-spin text-[var(--admin-faint)]"
+                            />
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+
+                    {open && (
+                      <tr className="border-b border-[var(--admin-line)] bg-[var(--admin-surface)]">
+                        <td colSpan={8} className="px-0 py-5">
+                          {(order.notes || order.delivery_address || order.payment_method) && (
+                            <div className="mb-4 space-y-1 border-b border-[var(--admin-line)] pb-4 text-[12px] leading-5 text-[var(--admin-muted)]">
                               {order.delivery_address && (
                                 <p>
-                                  <b>Dirección:</b> {order.delivery_address}
+                                  <span className="text-[var(--admin-ink)]">Dirección</span>{" "}
+                                  {order.delivery_address}
+                                </p>
+                              )}
+                              {order.payment_method && (
+                                <p>
+                                  <span className="text-[var(--admin-ink)]">Pago</span>{" "}
+                                  {order.payment_method}
                                 </p>
                               )}
                               {order.notes && (
                                 <p>
-                                  <b>Notas:</b> {order.notes}
+                                  <span className="text-[var(--admin-ink)]">Notas</span> {order.notes}
                                 </p>
                               )}
                             </div>
                           )}
-                          <ul className="space-y-2">
+                          <ul className="divide-y divide-[var(--admin-line)]">
                             {order.items.map((item, index) => {
-                              const unit = item.quantity > 0 ? item.line_total / item.quantity : item.line_total;
+                              const unit =
+                                item.quantity > 0 ? item.line_total / item.quantity : item.line_total;
                               return (
                                 <li
                                   key={`${order.id}-${index}`}
-                                  className="flex items-center justify-between gap-3 text-xs"
+                                  className="flex items-center justify-between gap-4 py-3"
                                 >
                                   <div className="flex min-w-0 items-center gap-3">
-                                    <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded border border-neutral-200 dark:border-neutral-700">
+                                    <div className="relative h-11 w-11 shrink-0 overflow-hidden bg-[var(--admin-canvas)]">
                                       {item.image_url ? (
                                         <Image
                                           src={item.image_url}
                                           alt={item.product_name}
                                           fill
-                                          sizes="40px"
+                                          sizes="44px"
                                           className="object-cover"
                                         />
                                       ) : (
-                                        <div className="flex h-full w-full items-center justify-center bg-neutral-200 text-neutral-400 dark:bg-neutral-800 dark:text-neutral-500">
-                                          <Package size={16} />
+                                        <div className="flex h-full w-full items-center justify-center text-[var(--admin-faint)]">
+                                          <Package size={16} strokeWidth={1.5} />
                                         </div>
                                       )}
                                     </div>
                                     <div className="min-w-0">
-                                      <span className="block truncate font-medium text-neutral-900 dark:text-white">
+                                      <span className="block truncate text-[13px] leading-5 text-[var(--admin-ink)]">
                                         {item.product_name}
                                       </span>
                                       {(item.variant?.size || item.variant?.color || item.note) && (
-                                        <span className="block truncate text-[11px] text-neutral-500 dark:text-neutral-400">
+                                        <span className="block truncate text-[11px] leading-4 text-[var(--admin-muted)]">
                                           {[
                                             item.variant?.size ? `Talle ${item.variant.size}` : null,
                                             item.variant?.color,
@@ -370,48 +499,50 @@ export default function PedidosPage() {
                                       )}
                                     </div>
                                   </div>
-                                  <div className="flex shrink-0 items-center gap-3">
-                                    <span className="text-neutral-600 dark:text-neutral-400">
-                                      {item.quantity} un. x {formatARS(unit)}
+                                  <div className="flex shrink-0 items-center gap-5">
+                                    <span className="text-[11px] tabular-nums text-[var(--admin-muted)]">
+                                      {item.quantity} un. × {formatARS(unit)}
                                     </span>
-                                    <span className="font-medium tabular-nums text-neutral-900 dark:text-white">{formatARS(item.line_total)}</span>
+                                    <span className="text-[13px] tabular-nums text-[var(--admin-ink)]">
+                                      {formatARS(item.line_total)}
+                                    </span>
                                   </div>
                                 </li>
                               );
                             })}
                           </ul>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                </Fragment>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-      {!loading && orders.length > PAGE_SIZE && (
-        <div className="flex items-center justify-between text-sm text-neutral-600 dark:text-neutral-300">
-          <span>
-            Página {current} de {totalPages} · {orders.length} pedidos
-          </span>
-          <div className="flex gap-2">
+      {!loading && filtered.length > PAGE_SIZE && (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className={ADMIN_EYEBROW}>
+            Página {current} de {totalPages} · {filtered.length} pedidos
+          </p>
+          <div className="flex items-center gap-6">
             <button
               type="button"
               disabled={current <= 1}
               onClick={() => setPage(current - 1)}
-              className="flex items-center gap-1 rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-neutral-700 hover:text-neutral-900 disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:text-white"
+              className="inline-flex items-center gap-1.5 text-[10px] font-medium uppercase leading-none tracking-[0.12em] text-[var(--admin-muted)] transition-colors hover:text-[var(--admin-ink)] disabled:cursor-not-allowed disabled:opacity-30"
             >
-              <ChevronLeft size={15} /> Anterior
+              <ChevronLeft size={13} strokeWidth={1.5} /> Anterior
             </button>
             <button
               type="button"
               disabled={current >= totalPages}
               onClick={() => setPage(current + 1)}
-              className="flex items-center gap-1 rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-neutral-700 hover:text-neutral-900 disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:text-white"
+              className="inline-flex items-center gap-1.5 text-[10px] font-medium uppercase leading-none tracking-[0.12em] text-[var(--admin-muted)] transition-colors hover:text-[var(--admin-ink)] disabled:cursor-not-allowed disabled:opacity-30"
             >
-              Siguiente <ChevronRight size={15} />
+              Siguiente <ChevronRight size={13} strokeWidth={1.5} />
             </button>
           </div>
         </div>

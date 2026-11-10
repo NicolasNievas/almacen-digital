@@ -6,6 +6,20 @@ import { ImagePlus, Loader2, Pencil, Plus, RefreshCw, Search, Tags, Trash2 } fro
 import ProductForm from "@/components/admin/ProductForm";
 import CategoryManager from "@/components/admin/CategoryManager";
 import ConfirmDialog from "@/components/admin/ConfirmDialog";
+import AdminPageHeader from "@/components/admin/AdminPageHeader";
+import {
+  ADMIN_ACTION_GHOST,
+  ADMIN_ACTION_PRIMARY,
+  ADMIN_EMPTY_TEXT,
+  ADMIN_EMPTY_TITLE,
+  ADMIN_ERROR,
+  ADMIN_EYEBROW,
+  ADMIN_ICON_BUTTON,
+  ADMIN_INPUT,
+  ADMIN_LOADING,
+  ADMIN_ROW,
+  ADMIN_TABLE_HEAD,
+} from "@/lib/admin-ui";
 import { resolveAdminStoreSlug } from "@/lib/admin-store";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import {
@@ -88,7 +102,9 @@ export default function ProductosPage() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return products;
-    return products.filter((p) => p.name.toLowerCase().includes(q) || categoryName(p.category_id).toLowerCase().includes(q));
+    return products.filter(
+      (p) => p.name.toLowerCase().includes(q) || categoryName(p.category_id).toLowerCase().includes(q),
+    );
   }, [products, query, categoryName]);
 
   const toggleActive = async (product: Product) => {
@@ -124,119 +140,172 @@ export default function ProductosPage() {
     }
   };
 
-  const inputClass =
-    "w-full rounded-lg border border-neutral-300 bg-white py-2 pl-9 pr-3 text-sm text-neutral-900 outline-none focus:border-brand dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100";
-
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-neutral-900 dark:text-neutral-100">Productos</h1>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">
-            Gestión completa de catálogo: crear, editar, pausar o eliminar productos e imágenes.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setManagingCategories(true)}
-            className="flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm text-neutral-700 hover:text-neutral-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:text-white"
-          >
-            <Tags size={15} /> Categorías
-          </button>
-          <button
-            type="button"
-            onClick={() => void load()}
-            className="flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm text-neutral-700 hover:text-neutral-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:text-white"
-          >
-            <RefreshCw size={15} /> Actualizar
-          </button>
-          <button
-            type="button"
-            onClick={() => setCreating(true)}
-            className="flex items-center gap-1.5 rounded-lg bg-brand-solid px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-accent"
-          >
-            <Plus size={15} /> Nuevo producto
-          </button>
-        </div>
-      </div>
+    <div className="space-y-8">
+      <AdminPageHeader
+        eyebrow="Catálogo"
+        title="Productos"
+        description="Alta, edición y estado de publicación de cada pieza del catálogo."
+        actions={
+          <>
+            <button type="button" onClick={() => setManagingCategories(true)} className={ADMIN_ACTION_GHOST}>
+              <Tags size={14} strokeWidth={1.5} /> Categorías
+            </button>
+            <button type="button" onClick={() => void load()} className={ADMIN_ACTION_GHOST}>
+              <RefreshCw size={14} strokeWidth={1.5} /> Actualizar
+            </button>
+            <button type="button" onClick={() => setCreating(true)} className={ADMIN_ACTION_PRIMARY}>
+              <Plus size={14} strokeWidth={1.5} /> Nuevo producto
+            </button>
+          </>
+        }
+      />
 
-      {error && <p className="rounded bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">{error}</p>}
+      {error && (
+        <p className={ADMIN_ERROR} role="alert">
+          {error}
+        </p>
+      )}
 
-      <div className="relative max-w-sm">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
-        <input className={inputClass} placeholder="Buscar producto…" value={query} onChange={(e) => setQuery(e.target.value)} />
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <label className="relative block w-full max-w-xs">
+          <span className="sr-only">Buscar producto</span>
+          <Search
+            size={15}
+            strokeWidth={1.5}
+            className="pointer-events-none absolute bottom-2.5 left-0 text-[var(--admin-faint)]"
+          />
+          <input
+            className={`${ADMIN_INPUT} pl-6`}
+            placeholder="Buscar por nombre o categoría"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </label>
+        <p className={ADMIN_EYEBROW}>
+          {filtered.length} {filtered.length === 1 ? "producto" : "productos"}
+        </p>
       </div>
 
       {!configured ? (
-        <p className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-center text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
-          No pudimos cargar el catálogo en este momento. Volvé a intentar en unos minutos.
-        </p>
+        <div className="border-y border-[var(--admin-line)] py-16">
+          <p className={ADMIN_EMPTY_TITLE}>Catálogo no disponible</p>
+          <p className={`${ADMIN_EMPTY_TEXT} mt-2`}>
+            No pudimos cargar los productos. Volvé a intentar en unos minutos.
+          </p>
+        </div>
       ) : loading ? (
-        <div className="flex items-center justify-center gap-2 py-20 text-neutral-500 dark:text-neutral-400">
-          <Loader2 className="h-5 w-5 animate-spin" /> Cargando productos...
+        <div className={ADMIN_LOADING}>
+          <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} /> Cargando productos
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="border-y border-[var(--admin-line)] py-16">
+          <p className={ADMIN_EMPTY_TITLE}>{products.length === 0 ? "Todavía no hay productos" : "Sin coincidencias"}</p>
+          <p className={`${ADMIN_EMPTY_TEXT} mt-2`}>
+            {products.length === 0
+              ? "Creá la primera pieza del catálogo para empezar a vender."
+              : "Probá con otro nombre o revisá la categoría."}
+          </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
-          <ul className="divide-y divide-neutral-100 dark:divide-neutral-800">
-            {filtered.map((product) => (
-              <li key={product.id} className="flex items-center gap-3 p-3">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-neutral-100 dark:bg-neutral-800">
-                  {product.image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={product.image_url} alt={product.name} className="h-full w-full object-cover" />
-                  ) : (
-                    <ImagePlus className="h-5 w-5 text-neutral-400" />
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="truncate font-medium text-neutral-900 dark:text-neutral-100">{product.name}</p>
-                    {!product.active && (
-                      <span className="rounded bg-neutral-200 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-neutral-600 dark:bg-neutral-700 dark:text-neutral-300">
-                        Pausado
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                    {categoryName(product.category_id)} · {formatARS(product.unit_price)} · Stock {product.stock}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => void toggleActive(product)}
-                  disabled={busyId === product.id}
-                  className={`rounded-full px-3 py-1 text-xs font-medium disabled:opacity-50 ${
-                    product.active
-                      ? "bg-green-600 text-white hover:bg-green-700"
-                      : "bg-neutral-300 text-neutral-700 hover:bg-neutral-400 dark:bg-neutral-700 dark:text-neutral-200"
-                  }`}
-                >
-                  {product.active ? "Activo" : "Pausado"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEditing(product)}
-                  className="rounded-lg border border-neutral-300 p-2 text-neutral-600 hover:text-neutral-900 dark:border-neutral-700 dark:text-neutral-300 dark:hover:text-white"
-                  aria-label="Editar"
-                >
-                  <Pencil size={15} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setToDelete(product)}
-                  disabled={busyId === product.id}
-                  className="rounded-lg border border-neutral-300 p-2 text-neutral-600 hover:text-red-600 disabled:opacity-50 dark:border-neutral-700 dark:text-neutral-300"
-                  aria-label="Eliminar"
-                >
-                  {busyId === product.id ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
-                </button>
-              </li>
-            ))}
-            {filtered.length === 0 && (
-              <li className="p-10 text-center text-sm text-neutral-500 dark:text-neutral-400">No hay productos.</li>
-            )}
-          </ul>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[620px] border-collapse">
+            <thead>
+              <tr>
+                <th className={`${ADMIN_TABLE_HEAD} pl-0`}>Producto</th>
+                <th className={`${ADMIN_TABLE_HEAD} hidden md:table-cell`}>Categoría</th>
+                <th className={`${ADMIN_TABLE_HEAD} text-right`}>Precio</th>
+                <th className={`${ADMIN_TABLE_HEAD} hidden pr-4 text-right sm:table-cell`}>Stock</th>
+                <th className={`${ADMIN_TABLE_HEAD} px-4 text-center`}>Estado</th>
+                <th className={`${ADMIN_TABLE_HEAD} pr-0 text-right`}>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((product) => {
+                const busy = busyId === product.id;
+                return (
+                  <tr key={product.id} className={ADMIN_ROW}>
+                    <td className="py-4 pl-0 pr-4">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden bg-[var(--admin-surface)]">
+                          {product.image_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={product.image_url}
+                              alt={product.name}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <ImagePlus size={17} strokeWidth={1.5} className="text-[var(--admin-faint)]" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm leading-5 text-[var(--admin-ink)]">{product.name}</p>
+                          <p className="mt-0.5 truncate text-[11px] leading-4 text-[var(--admin-muted)] md:hidden">
+                            {categoryName(product.category_id)}
+                            <span className="sm:hidden"> · Stock {product.stock}</span>
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="hidden py-4 pr-4 text-[13px] text-[var(--admin-muted)] md:table-cell">
+                      {categoryName(product.category_id)}
+                    </td>
+                    <td className="py-4 pr-4 text-right text-[13px] tabular-nums text-[var(--admin-ink)]">
+                      {formatARS(product.unit_price)}
+                    </td>
+                    <td className="hidden py-4 pr-4 text-right text-[13px] tabular-nums text-[var(--admin-muted)] sm:table-cell">
+                      {product.stock}
+                    </td>
+                    <td className="px-4 py-4 text-center">
+                      <button
+                        type="button"
+                        onClick={() => void toggleActive(product)}
+                        disabled={busy}
+                        aria-pressed={product.active}
+                        title={product.active ? "Pausar publicación" : "Publicar producto"}
+                        className="inline-flex items-center gap-2 text-[10px] font-medium uppercase leading-none tracking-[0.14em] text-[var(--admin-muted)] transition-colors hover:text-[var(--admin-ink)] disabled:opacity-40"
+                      >
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full ${
+                            product.active
+                              ? "bg-[var(--admin-positive)]"
+                              : "border border-[var(--admin-faint)] bg-transparent"
+                          }`}
+                        />
+                        {product.active ? "Activo" : "Pausado"}
+                      </button>
+                    </td>
+                    <td className="py-4 pl-4 pr-0">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setEditing(product)}
+                          className={ADMIN_ICON_BUTTON}
+                          aria-label={`Editar ${product.name}`}
+                        >
+                          <Pencil size={15} strokeWidth={1.5} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setToDelete(product)}
+                          disabled={busy}
+                          className={`${ADMIN_ICON_BUTTON} hover:text-[var(--admin-danger)]`}
+                          aria-label={`Eliminar ${product.name}`}
+                        >
+                          {busy ? (
+                            <Loader2 size={15} strokeWidth={1.5} className="animate-spin" />
+                          ) : (
+                            <Trash2 size={15} strokeWidth={1.5} />
+                          )}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
 

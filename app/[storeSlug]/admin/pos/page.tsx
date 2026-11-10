@@ -4,6 +4,14 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Loader2, RefreshCw } from "lucide-react";
 import PosScreen from "@/components/admin/PosScreen";
+import AdminPageHeader from "@/components/admin/AdminPageHeader";
+import {
+  ADMIN_ACTION_GHOST,
+  ADMIN_EMPTY_TEXT,
+  ADMIN_EMPTY_TITLE,
+  ADMIN_ERROR,
+  ADMIN_LOADING,
+} from "@/lib/admin-ui";
 import { resolveAdminStoreSlug } from "@/lib/admin-store";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { fetchAdminStore, fetchProducts } from "@/lib/supabase/queries";
@@ -111,39 +119,48 @@ export default function PosPage() {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-neutral-900 dark:text-neutral-100">Punto de venta</h1>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">
-            Caja registradora presencial para cobro rápido y descuento automático de stock.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => configured && void load()}
-          className="flex shrink-0 items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-sm text-neutral-600 hover:text-neutral-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:text-white"
-        >
-          <RefreshCw size={14} /> Actualizar
-        </button>
-      </div>
+    <div className="space-y-8">
+      <AdminPageHeader
+        eyebrow="Caja"
+        title="Punto de venta"
+        description="Cobro presencial con descuento automático de stock y ticket de 80 mm."
+        actions={
+          <button
+            type="button"
+            onClick={() => configured && void load()}
+            className={ADMIN_ACTION_GHOST}
+          >
+            <RefreshCw size={14} strokeWidth={1.5} /> Actualizar
+          </button>
+        }
+      />
 
-      {error && <p className="rounded bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">{error}</p>}
+      {error && (
+        <p className={ADMIN_ERROR} role="alert">
+          {error}
+        </p>
+      )}
 
       {!configured ? (
-        <p className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-center text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
-          No pudimos cargar el punto de venta en este momento. Volvé a intentar en unos minutos.
-        </p>
+        <div className="border-y border-[var(--admin-line)] py-16">
+          <p className={ADMIN_EMPTY_TITLE}>Caja no disponible</p>
+          <p className={`${ADMIN_EMPTY_TEXT} mt-2`}>
+            No pudimos cargar el punto de venta. Volvé a intentar en unos minutos.
+          </p>
+        </div>
       ) : loading ? (
-        <div className="flex items-center justify-center gap-2 py-20 text-neutral-500 dark:text-neutral-400">
-          <Loader2 className="h-5 w-5 animate-spin" /> Cargando productos...
+        <div className={ADMIN_LOADING}>
+          <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} /> Preparando la caja
         </div>
       ) : storeId ? (
         <PosScreen key={version} products={products} onCheckout={handleCheckout} />
       ) : (
-        <p className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-center text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
-          No se pudo identificar la tienda. Verificá que exista `ag-mayorista` en Supabase.
-        </p>
+        <div className="border-y border-[var(--admin-line)] py-16">
+          <p className={ADMIN_EMPTY_TITLE}>Tienda no identificada</p>
+          <p className={`${ADMIN_EMPTY_TEXT} mt-2`}>
+            Verificá que la tienda exista y que tu usuario tenga acceso.
+          </p>
+        </div>
       )}
     </div>
   );

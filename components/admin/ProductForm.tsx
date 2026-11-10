@@ -1,10 +1,21 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import Image from "next/image";
-import { ImagePlus, Loader2, Package, Plus, Trash2, X } from "lucide-react";
+import { ChevronDown, ImagePlus, Loader2, Package, Plus, Trash2, X } from "lucide-react";
 import { isCloudinaryConfigured, uploadImage } from "@/lib/cloudinary";
 import { createProduct, updateProduct } from "@/lib/supabase/queries";
+import {
+  ADMIN_ACTION_GHOST,
+  ADMIN_ACTION_PRIMARY,
+  ADMIN_EYEBROW,
+  ADMIN_ERROR,
+  ADMIN_ICON_BUTTON,
+  ADMIN_INPUT,
+  ADMIN_LABEL,
+  ADMIN_MODAL_OVERLAY,
+  ADMIN_MODAL_PANEL,
+} from "@/lib/admin-ui";
 import type { Category, PricingTier, PricingType, Product, ProductInput } from "@/lib/types";
 
 type Props = {
@@ -76,6 +87,19 @@ export default function ProductForm({ product, categories, storeId, onClose, onS
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !saving) onClose();
+    };
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = previous || "unset";
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [onClose, saving]);
 
   const set = <K extends keyof ProductInput>(key: K, value: ProductInput[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -171,276 +195,308 @@ export default function ProductForm({ product, categories, storeId, onClose, onS
     }
   };
 
-  const inputClass =
-    "w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-brand dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100";
-  const labelClass = "block space-y-1 text-xs font-medium text-neutral-600 dark:text-neutral-400";
-
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4">
-      <form
-        onSubmit={handleSubmit}
-        className="my-6 w-full max-w-2xl space-y-4 rounded-xl border border-neutral-200 bg-white p-5 shadow-lg dark:border-neutral-800 dark:bg-neutral-900"
-      >
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-100">
-            {editing ? "Editar producto" : "Nuevo producto"}
-          </h2>
-          <button type="button" onClick={onClose} aria-label="Cerrar" className="text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200">
-            <X size={20} />
+    <div className={`${ADMIN_MODAL_OVERLAY} items-start`} role="dialog" aria-modal="true" aria-label={editing ? "Editar producto" : "Nuevo producto"}>
+      <form onSubmit={handleSubmit} className={`${ADMIN_MODAL_PANEL} max-w-3xl`}>
+        <div className="flex items-start justify-between gap-4 border-b border-[var(--admin-line)] px-6 py-5">
+          <div>
+            <p className={ADMIN_EYEBROW}>{editing ? "Editar pieza" : "Nueva pieza"}</p>
+            <h2 data-display className="mt-2 [font-family:var(--store-font-heading)] text-[26px] font-normal leading-[1.1] text-[var(--admin-ink)]">
+              {editing ? "Editar producto" : "Nuevo producto"}
+            </h2>
+          </div>
+          <button type="button" onClick={onClose} className={ADMIN_ICON_BUTTON} aria-label="Cerrar">
+            <X size={18} strokeWidth={1.5} />
           </button>
         </div>
 
-        {error && <p className="rounded bg-red-50 p-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">{error}</p>}
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className={labelClass}>
-            Nombre *
-            <input className={inputClass} value={form.name} onChange={(e) => set("name", e.target.value)} required />
-          </label>
-          <label className={labelClass}>
-            Categoría *
-            <select className={inputClass} value={form.category_id} onChange={(e) => set("category_id", e.target.value)} required>
-              <option value="">Seleccionar…</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className={labelClass}>
-            Precio base *
-            <input
-              type="number"
-              min={0}
-              step="0.01"
-              className={inputClass}
-              value={form.unit_price}
-              onChange={(e) => set("unit_price", Number(e.target.value))}
-            />
-          </label>
-          <label className={labelClass}>
-            Stock (unidades) *
-            <input
-              type="number"
-              min={0}
-              className={inputClass}
-              value={form.stock}
-              onChange={(e) => set("stock", Math.max(0, Number(e.target.value)))}
-            />
-          </label>
-
-          <label className={labelClass}>
-            Tipo de descuento
-            <select
-              className={inputClass}
-              value={form.pricing_type}
-              onChange={(e) => set("pricing_type", e.target.value as PricingType)}
-            >
-              <option value="SIMPLE">Simple</option>
-              <option value="TIERED">Escalado (por cantidad)</option>
-              <option value="BUNDLE">Combo / Pack</option>
-            </select>
-          </label>
-
-          <label className={labelClass}>
-            Etiquetas (separadas por coma)
-            <input
-              className={inputClass}
-              value={tagsText}
-              onChange={(e) => setTagsText(e.target.value)}
-              placeholder="oferta, nuevo"
-            />
-          </label>
-        </div>
-
-        <label className={labelClass}>
-          Descripción
-          <textarea
-            rows={2}
-            className={inputClass}
-            value={form.description ?? ""}
-            onChange={(e) => set("description", e.target.value || null)}
-            placeholder="Materiales, ingredientes, detalles de preparación…"
-          />
-        </label>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className={labelClass}>
-            Talles (separados por coma)
-            <input
-              className={inputClass}
-              value={sizesText}
-              onChange={(e) => setSizesText(e.target.value)}
-              placeholder="S, M, L, XL"
-            />
-          </label>
-          <label className={labelClass}>
-            Colores (separados por coma)
-            <input
-              className={inputClass}
-              value={colorsText}
-              onChange={(e) => setColorsText(e.target.value)}
-              placeholder="Negro, Blanco, Arena"
-            />
-          </label>
-        </div>
-
-        {form.pricing_type === "TIERED" && (
-          <div className="space-y-2 rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
-            <p className="text-xs font-medium text-neutral-600 dark:text-neutral-400">
-              Escalones (a partir de X unidades, precio unitario)
+        <div className="space-y-7 px-6 py-6">
+          {error && (
+            <p className={ADMIN_ERROR} role="alert">
+              {error}
             </p>
-            {tiers.map((tier, index) => (
-              <div key={index} className="flex items-center gap-2">
-                <input
-                  type="number"
-                  min={1}
-                  placeholder="Cantidad mín."
-                  className={inputClass}
-                  value={tier.min_quantity}
-                  onChange={(e) =>
-                    setTiers((prev) => prev.map((t, i) => (i === index ? { ...t, min_quantity: e.target.value } : t)))
-                  }
-                />
-                <input
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  placeholder="Precio unitario"
-                  className={inputClass}
-                  value={tier.unit_price}
-                  onChange={(e) =>
-                    setTiers((prev) => prev.map((t, i) => (i === index ? { ...t, unit_price: e.target.value } : t)))
-                  }
-                />
-                <button
-                  type="button"
-                  onClick={() => setTiers((prev) => prev.filter((_, i) => i !== index))}
-                  className="rounded border border-neutral-300 p-2 text-neutral-500 hover:text-red-600 dark:border-neutral-700"
-                  aria-label="Quitar escalón"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={() => setTiers((prev) => [...prev, { min_quantity: "", unit_price: "" }])}
-              className="flex items-center gap-1 text-sm text-brand hover:underline"
-            >
-              <Plus size={14} /> Agregar escalón
-            </button>
-          </div>
-        )}
+          )}
 
-        {form.pricing_type === "BUNDLE" && (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className={labelClass}>
-              Unidades por combo
+          <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
+            <label className={ADMIN_LABEL}>
+              Nombre
               <input
-                type="number"
-                min={1}
-                className={inputClass}
-                value={form.bundle_size ?? ""}
-                onChange={(e) => set("bundle_size", e.target.value ? Number(e.target.value) : null)}
+                className={ADMIN_INPUT}
+                value={form.name}
+                onChange={(e) => set("name", e.target.value)}
+                placeholder="Nombre del producto"
+                required
               />
             </label>
-            <label className={labelClass}>
-              Precio del combo
+            <label className={ADMIN_LABEL}>
+              Categoría
+              <span className="relative block">
+                <select
+                  className={`${ADMIN_INPUT} pr-6`}
+                  value={form.category_id}
+                  onChange={(e) => set("category_id", e.target.value)}
+                  required
+                >
+                  <option value="">Seleccionar…</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown
+                  size={13}
+                  strokeWidth={1.5}
+                  className="pointer-events-none absolute bottom-2.5 right-0 text-[var(--admin-muted)]"
+                />
+              </span>
+            </label>
+
+            <label className={ADMIN_LABEL}>
+              Precio base
               <input
                 type="number"
                 min={0}
                 step="0.01"
-                className={inputClass}
-                value={form.bundle_price ?? ""}
-                onChange={(e) => set("bundle_price", e.target.value ? Number(e.target.value) : null)}
+                className={ADMIN_INPUT}
+                value={form.unit_price}
+                onChange={(e) => set("unit_price", Number(e.target.value))}
+              />
+            </label>
+            <label className={ADMIN_LABEL}>
+              Stock (unidades)
+              <input
+                type="number"
+                min={0}
+                className={ADMIN_INPUT}
+                value={form.stock}
+                onChange={(e) => set("stock", Math.max(0, Number(e.target.value)))}
+              />
+            </label>
+
+            <label className={ADMIN_LABEL}>
+              Tipo de precio
+              <span className="relative block">
+                <select
+                  className={`${ADMIN_INPUT} pr-6`}
+                  value={form.pricing_type}
+                  onChange={(e) => set("pricing_type", e.target.value as PricingType)}
+                >
+                  <option value="SIMPLE">Simple</option>
+                  <option value="TIERED">Escalado por cantidad</option>
+                  <option value="BUNDLE">Combo / pack</option>
+                </select>
+                <ChevronDown
+                  size={13}
+                  strokeWidth={1.5}
+                  className="pointer-events-none absolute bottom-2.5 right-0 text-[var(--admin-muted)]"
+                />
+              </span>
+            </label>
+
+            <label className={ADMIN_LABEL}>
+              Etiquetas
+              <input
+                className={ADMIN_INPUT}
+                value={tagsText}
+                onChange={(e) => setTagsText(e.target.value)}
+                placeholder="oferta, nuevo"
               />
             </label>
           </div>
-        )}
 
-        <div className="space-y-2">
-          <p className="text-xs font-medium text-neutral-600 dark:text-neutral-400">Imagen</p>
-          <div className="flex items-center gap-3">
-            <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-neutral-200 bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800">
-              {form.image_url ? (
-                <Image src={form.image_url} alt="Vista previa" fill sizes="80px" className="object-cover" />
-              ) : (
-                <Package className="h-7 w-7 text-neutral-400" />
-              )}
-            </div>
-            <div className="space-y-1">
+          <label className={ADMIN_LABEL}>
+            Descripción
+            <textarea
+              rows={2}
+              className={ADMIN_INPUT}
+              value={form.description ?? ""}
+              onChange={(e) => set("description", e.target.value || null)}
+              placeholder="Materiales, ingredientes, detalles de preparación…"
+            />
+          </label>
+
+          <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
+            <label className={ADMIN_LABEL}>
+              Talles
+              <input
+                className={ADMIN_INPUT}
+                value={sizesText}
+                onChange={(e) => setSizesText(e.target.value)}
+                placeholder="S, M, L, XL"
+              />
+            </label>
+            <label className={ADMIN_LABEL}>
+              Colores
+              <input
+                className={ADMIN_INPUT}
+                value={colorsText}
+                onChange={(e) => setColorsText(e.target.value)}
+                placeholder="Negro, Blanco, Arena"
+              />
+            </label>
+          </div>
+
+          {form.pricing_type === "TIERED" && (
+            <div className="border-t border-[var(--admin-line)] pt-5">
+              <p className={ADMIN_EYEBROW}>Escalones · cantidad mínima / precio unitario</p>
+              <div className="mt-4 space-y-3">
+                {tiers.map((tier, index) => (
+                  <div key={index} className="flex items-end gap-3">
+                    <input
+                      type="number"
+                      min={1}
+                      placeholder="Cantidad mín."
+                      className={ADMIN_INPUT}
+                      value={tier.min_quantity}
+                      onChange={(e) =>
+                        setTiers((prev) =>
+                          prev.map((t, i) => (i === index ? { ...t, min_quantity: e.target.value } : t)),
+                        )
+                      }
+                    />
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      placeholder="Precio unitario"
+                      className={ADMIN_INPUT}
+                      value={tier.unit_price}
+                      onChange={(e) =>
+                        setTiers((prev) =>
+                          prev.map((t, i) => (i === index ? { ...t, unit_price: e.target.value } : t)),
+                        )
+                      }
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setTiers((prev) => prev.filter((_, i) => i !== index))}
+                      className={`${ADMIN_ICON_BUTTON} hover:text-[var(--admin-danger)]`}
+                      aria-label="Quitar escalón"
+                    >
+                      <Trash2 size={15} strokeWidth={1.5} />
+                    </button>
+                  </div>
+                ))}
+              </div>
               <button
                 type="button"
-                onClick={() => fileRef.current?.click()}
-                disabled={uploading}
-                className="flex items-center gap-1.5 rounded-lg border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:text-neutral-900 disabled:opacity-50 dark:border-neutral-700 dark:text-neutral-300 dark:hover:text-white"
+                onClick={() => setTiers((prev) => [...prev, { min_quantity: "", unit_price: "" }])}
+                className={`${ADMIN_ACTION_GHOST} mt-4`}
               >
-                {uploading ? <Loader2 size={14} className="animate-spin" /> : <ImagePlus size={14} />}
-                {uploading ? "Subiendo…" : "Subir imagen"}
+                <Plus size={13} strokeWidth={1.5} /> Agregar escalón
               </button>
-              {form.image_url && (
+            </div>
+          )}
+
+          {form.pricing_type === "BUNDLE" && (
+            <div className="grid gap-x-6 gap-y-5 border-t border-[var(--admin-line)] pt-5 sm:grid-cols-2">
+              <label className={ADMIN_LABEL}>
+                Unidades por combo
+                <input
+                  type="number"
+                  min={1}
+                  className={ADMIN_INPUT}
+                  value={form.bundle_size ?? ""}
+                  onChange={(e) => set("bundle_size", e.target.value ? Number(e.target.value) : null)}
+                />
+              </label>
+              <label className={ADMIN_LABEL}>
+                Precio del combo
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  className={ADMIN_INPUT}
+                  value={form.bundle_price ?? ""}
+                  onChange={(e) => set("bundle_price", e.target.value ? Number(e.target.value) : null)}
+                />
+              </label>
+            </div>
+          )}
+
+          <div className="border-t border-[var(--admin-line)] pt-5">
+            <p className={ADMIN_EYEBROW}>Imagen principal</p>
+            <div className="mt-4 flex items-center gap-4">
+              <div className="relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden bg-[var(--admin-surface)]">
+                {form.image_url ? (
+                  <Image src={form.image_url} alt="Vista previa" fill sizes="96px" className="object-cover" />
+                ) : (
+                  <Package size={22} strokeWidth={1.5} className="text-[var(--admin-faint)]" />
+                )}
+              </div>
+              <div className="space-y-2">
                 <button
                   type="button"
-                  onClick={() => set("image_url", null)}
-                  className="text-xs text-neutral-500 hover:text-red-600"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={uploading}
+                  className={ADMIN_ACTION_GHOST}
                 >
-                  Quitar imagen
+                  {uploading ? (
+                    <Loader2 size={13} strokeWidth={1.5} className="animate-spin" />
+                  ) : (
+                    <ImagePlus size={13} strokeWidth={1.5} />
+                  )}
+                  {uploading ? "Subiendo…" : "Subir imagen"}
                 </button>
-              )}
-              {!isCloudinaryConfigured() && (
-                <p className="text-xs text-amber-600 dark:text-amber-400">
-                  Configurá Cloudinary para habilitar la subida.
-                </p>
-              )}
+                {form.image_url && (
+                  <button
+                    type="button"
+                    onClick={() => set("image_url", null)}
+                    className="block text-[10px] uppercase tracking-[0.12em] text-[var(--admin-muted)] transition-colors hover:text-[var(--admin-danger)]"
+                  >
+                    Quitar imagen
+                  </button>
+                )}
+                {!isCloudinaryConfigured() && (
+                  <p className="text-[11px] leading-4 text-[var(--admin-warning)]">
+                    Configurá Cloudinary para habilitar la subida.
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => void handleFile(e.target.files?.[0])}
-          />
-          <input
-            className={inputClass}
-            placeholder="…o pegá una URL de imagen"
-            value={form.image_url ?? ""}
-            onChange={(e) => set("image_url", e.target.value || null)}
-          />
-          <label className={labelClass}>
-            Galería adicional (una URL por línea)
-            <textarea
-              rows={3}
-              className={inputClass}
-              value={galleryText}
-              onChange={(e) => setGalleryText(e.target.value)}
-              placeholder="https://res.cloudinary.com/…&#10;https://res.cloudinary.com/…"
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => void handleFile(e.target.files?.[0])}
             />
+            <input
+              className={`${ADMIN_INPUT} mt-5`}
+              placeholder="…o pegá una URL de imagen"
+              value={form.image_url ?? ""}
+              onChange={(e) => set("image_url", e.target.value || null)}
+            />
+            <label className={`${ADMIN_LABEL} mt-5`}>
+              Galería adicional · una URL por línea
+              <textarea
+                rows={3}
+                className={ADMIN_INPUT}
+                value={galleryText}
+                onChange={(e) => setGalleryText(e.target.value)}
+                placeholder={"https://res.cloudinary.com/…\nhttps://res.cloudinary.com/…"}
+              />
+            </label>
+          </div>
+
+          <label className="flex items-center gap-3 text-sm text-[var(--admin-ink)]">
+            <input
+              type="checkbox"
+              checked={form.active}
+              onChange={(e) => set("active", e.target.checked)}
+              className="h-4 w-4 accent-[var(--admin-ink)]"
+            />
+            Producto activo · visible en la tienda
           </label>
         </div>
 
-        <label className="flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300">
-          <input type="checkbox" checked={form.active} onChange={(e) => set("active", e.target.checked)} />
-          Producto activo (visible en la tienda)
-        </label>
-
-        <div className="flex justify-end gap-2 border-t border-neutral-200 pt-4 dark:border-neutral-800">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg border border-neutral-300 px-4 py-2 text-sm text-neutral-700 hover:text-neutral-900 dark:border-neutral-700 dark:text-neutral-300 dark:hover:text-white"
-          >
+        <div className="flex flex-col-reverse gap-2 border-t border-[var(--admin-line)] px-6 py-5 sm:flex-row sm:justify-end">
+          <button type="button" onClick={onClose} className={ADMIN_ACTION_GHOST}>
             Cancelar
           </button>
-          <button
-            type="submit"
-            disabled={saving || uploading}
-            className="flex items-center gap-2 rounded-lg bg-brand-solid px-4 py-2 text-sm font-semibold text-white hover:bg-brand-accent disabled:opacity-50"
-          >
-            {saving && <Loader2 size={15} className="animate-spin" />}
+          <button type="submit" disabled={saving || uploading} className={ADMIN_ACTION_PRIMARY}>
+            {saving && <Loader2 size={13} strokeWidth={1.5} className="animate-spin" />}
             {editing ? "Guardar cambios" : "Crear producto"}
           </button>
         </div>

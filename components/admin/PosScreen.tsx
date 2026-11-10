@@ -1,7 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CheckCircle2, Minus, Plus, Search, ShoppingCart, Trash2 } from "lucide-react";
+import { CheckCircle2, ChevronDown, Minus, Plus, Search, ShoppingCart, Trash2 } from "lucide-react";
+import {
+  ADMIN_ACTION_PRIMARY,
+  ADMIN_EYEBROW,
+  ADMIN_INPUT,
+} from "@/lib/admin-ui";
 import type { CartLine, Product } from "@/lib/types";
 import { calcSubtotal, formatARS } from "@/lib/pricing";
 import { makeLineId } from "@/lib/cart";
@@ -23,6 +28,7 @@ export default function PosScreen({ products, onCheckout }: Props) {
   const [customer, setCustomer] = useState("");
   const [payment, setPayment] = useState<string>(PAYMENTS[0]);
   const [message, setMessage] = useState<string | null>(null);
+  const [messageOk, setMessageOk] = useState(false);
   const [processing, setProcessing] = useState(false);
 
   const available = useMemo(() => {
@@ -68,136 +74,199 @@ export default function PosScreen({ products, onCheckout }: Props) {
       );
       setLines([]);
       setCustomer("");
+      setMessageOk(true);
       setMessage("Venta registrada correctamente.");
     } catch (error) {
+      setMessageOk(false);
       setMessage(error instanceof Error ? error.message : "No se pudo registrar la venta.");
     } finally {
       setProcessing(false);
     }
   };
 
-  const inputClass =
-    "w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-brand dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100";
-
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
-      <section className="space-y-3">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+    <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-12">
+      <section>
+        <label className="relative block border-b border-[var(--admin-line-strong)]">
+          <span className="sr-only">Buscar producto para vender</span>
+          <Search
+            size={15}
+            strokeWidth={1.5}
+            className="pointer-events-none absolute bottom-2.5 left-0 text-[var(--admin-faint)]"
+          />
           <input
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
               setVisible(PAGE_SIZE);
             }}
-            placeholder="Buscar producto para vender..."
-            className={`${inputClass} py-2.5 pl-9 pr-3`}
+            placeholder="Buscar producto para vender"
+            className="w-full appearance-none border-0 bg-transparent py-2 pl-6 text-sm text-[var(--admin-ink)] outline-none placeholder:text-[var(--admin-faint)] focus:border-[var(--admin-ink)]"
           />
-        </div>
+        </label>
 
-        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-          {available.slice(0, visible).map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              disabled={p.stock <= 0}
-              onClick={() => add(p)}
-              className="flex flex-col items-start rounded-lg border border-neutral-200 bg-white p-3 text-left transition-colors hover:border-brand disabled:opacity-40 dark:border-neutral-800 dark:bg-neutral-900"
-            >
-              <span className="line-clamp-2 text-sm font-medium text-neutral-900 dark:text-neutral-100">{p.name}</span>
-              <span className="mt-1 text-sm font-bold text-neutral-900 dark:text-neutral-100">{formatARS(p.unit_price)}</span>
-              <span className="text-xs text-neutral-400 dark:text-neutral-500">Stock: {p.stock}</span>
-            </button>
-          ))}
-          {available.length === 0 && <p className="text-sm text-neutral-500 dark:text-neutral-400">Sin resultados.</p>}
-        </div>
+        {available.length === 0 ? (
+          <p className="border-b border-[var(--admin-line)] py-12 text-center text-[11px] uppercase tracking-[0.14em] text-[var(--admin-faint)]">
+            Sin resultados
+          </p>
+        ) : (
+          <div className="grid sm:grid-cols-2 xl:grid-cols-3">
+            {available.slice(0, visible).map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                disabled={p.stock <= 0}
+                onClick={() => add(p)}
+                className="group flex flex-col items-start border-b border-[var(--admin-line)] py-4 pr-6 text-left transition-colors duration-200 hover:bg-[var(--admin-surface)] disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none"
+              >
+                <span className="line-clamp-2 text-sm leading-5 text-[var(--admin-ink)] group-hover:underline group-hover:underline-offset-4">
+                  {p.name}
+                </span>
+                <span className="mt-2 text-[13px] tabular-nums text-[var(--admin-ink)]">
+                  {formatARS(p.unit_price)}
+                </span>
+                <span className="mt-1 text-[10px] uppercase leading-none tracking-[0.12em] text-[var(--admin-faint)]">
+                  Stock {p.stock}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
 
         {visible < available.length && (
-          <div className="flex justify-center pt-1">
+          <div className="flex justify-center pt-6">
             <button
               type="button"
               onClick={() => setVisible((v) => v + PAGE_SIZE)}
-              className="rounded-lg border border-neutral-300 bg-white px-4 py-1.5 text-sm font-medium text-neutral-700 hover:text-neutral-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:text-white"
+              className="text-[10px] font-medium uppercase leading-none tracking-[0.14em] text-[var(--admin-muted)] transition-colors hover:text-[var(--admin-ink)]"
             >
-              Cargar más
+              Cargar más productos
             </button>
           </div>
         )}
       </section>
 
-      <aside className="flex h-fit flex-col gap-3 rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
-        <h2 className="flex items-center gap-2 text-base font-semibold text-neutral-900 dark:text-neutral-100">
-          <ShoppingCart size={18} /> Ticket
-        </h2>
-
-        <div className="max-h-72 space-y-2 overflow-y-auto">
-          {lines.length === 0 && <p className="text-sm text-neutral-500 dark:text-neutral-400">Agregá productos para vender.</p>}
-          {lines.map((l) => (
-            <div key={l.lineId} className="rounded-lg border border-neutral-200 p-2 dark:border-neutral-800">
-              <div className="flex items-start justify-between gap-2">
-                <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{l.product.name}</span>
-                <button
-                  type="button"
-                  onClick={() => changeQty(l.lineId, 0)}
-                  className="text-neutral-400 hover:text-red-600"
-                  aria-label="Quitar"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
-              <div className="mt-1 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    className="rounded border border-neutral-300 p-1 dark:border-neutral-700"
-                    onClick={() => changeQty(l.lineId, l.quantity - 1)}
-                  >
-                    <Minus size={14} />
-                  </button>
-                  <span className="w-6 text-center text-sm text-neutral-900 dark:text-neutral-100">{l.quantity}</span>
-                  <button
-                    type="button"
-                    disabled={l.quantity >= l.product.stock}
-                    className="rounded border border-neutral-300 p-1 disabled:opacity-30 dark:border-neutral-700"
-                    onClick={() => changeQty(l.lineId, l.quantity + 1)}
-                  >
-                    <Plus size={14} />
-                  </button>
-                </div>
-                <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-                  {formatARS(calcSubtotal(l.product, l.quantity))}
-                </span>
-              </div>
-            </div>
-          ))}
+      <aside className="h-fit border-t border-[var(--admin-line)] pt-5 lg:sticky lg:top-10 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className={`${ADMIN_EYEBROW} flex items-center gap-2`}>
+            <ShoppingCart size={13} strokeWidth={1.5} /> Ticket
+          </h2>
+          <span className="text-[10px] tabular-nums uppercase tracking-[0.12em] text-[var(--admin-faint)]">
+            {lines.length} {lines.length === 1 ? "ítem" : "ítems"}
+          </span>
         </div>
 
-        <input value={customer} onChange={(e) => setCustomer(e.target.value)} placeholder="Cliente (opcional)" className={inputClass} />
+        <div className="mt-4 max-h-72 overflow-y-auto border-y border-[var(--admin-line)]">
+          {lines.length === 0 ? (
+            <p className="py-8 text-center text-[11px] uppercase tracking-[0.14em] text-[var(--admin-faint)]">
+              Agregá productos para vender
+            </p>
+          ) : (
+            <ul className="divide-y divide-[var(--admin-line)]">
+              {lines.map((l) => (
+                <li key={l.lineId} className="py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="text-[13px] leading-5 text-[var(--admin-ink)]">{l.product.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => changeQty(l.lineId, 0)}
+                      className="text-[var(--admin-faint)] transition-colors hover:text-[var(--admin-danger)]"
+                      aria-label={`Quitar ${l.product.name}`}
+                    >
+                      <Trash2 size={14} strokeWidth={1.5} />
+                    </button>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between">
+                    <div className="inline-flex items-center border-b border-[var(--admin-line)]">
+                      <button
+                        type="button"
+                        className="inline-flex h-7 w-6 items-center justify-center text-[var(--admin-muted)] transition-colors hover:text-[var(--admin-ink)]"
+                        onClick={() => changeQty(l.lineId, l.quantity - 1)}
+                        aria-label="Restar unidad"
+                      >
+                        <Minus size={12} strokeWidth={1.5} />
+                      </button>
+                      <span className="w-7 text-center text-[13px] tabular-nums text-[var(--admin-ink)]">
+                        {l.quantity}
+                      </span>
+                      <button
+                        type="button"
+                        disabled={l.quantity >= l.product.stock}
+                        className="inline-flex h-7 w-6 items-center justify-center text-[var(--admin-muted)] transition-colors hover:text-[var(--admin-ink)] disabled:opacity-30"
+                        onClick={() => changeQty(l.lineId, l.quantity + 1)}
+                        aria-label="Sumar unidad"
+                      >
+                        <Plus size={12} strokeWidth={1.5} />
+                      </button>
+                    </div>
+                    <span className="text-[13px] tabular-nums text-[var(--admin-ink)]">
+                      {formatARS(calcSubtotal(l.product, l.quantity))}
+                    </span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
 
-        <select value={payment} onChange={(e) => setPayment(e.target.value)} className={inputClass}>
-          {PAYMENTS.map((p) => (
-            <option key={p} value={p}>
-              {p}
-            </option>
-          ))}
-        </select>
+        <div className="mt-5 space-y-5">
+          <label className="block">
+            <span className={ADMIN_EYEBROW}>Cliente · opcional</span>
+            <input
+              value={customer}
+              onChange={(e) => setCustomer(e.target.value)}
+              placeholder="Nombre del cliente"
+              className={`${ADMIN_INPUT} mt-2`}
+            />
+          </label>
 
-        <div className="flex justify-between text-lg font-bold text-neutral-900 dark:text-neutral-100">
-          <span>Total</span>
-          <span>{formatARS(total)}</span>
+          <label className="block">
+            <span className={ADMIN_EYEBROW}>Medio de pago</span>
+            <span className="relative mt-2 block">
+              <select
+                value={payment}
+                onChange={(e) => setPayment(e.target.value)}
+                className={`${ADMIN_INPUT} pr-6`}
+              >
+                {PAYMENTS.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                size={13}
+                strokeWidth={1.5}
+                className="pointer-events-none absolute bottom-2.5 right-0 text-[var(--admin-muted)]"
+              />
+            </span>
+          </label>
+        </div>
+
+        <div className="mt-6 flex items-baseline justify-between gap-4 border-t border-[var(--admin-line)] pt-5">
+          <span className={ADMIN_EYEBROW}>Total</span>
+          <span className="[font-family:var(--store-font-heading)] text-[32px] font-normal leading-none tabular-nums tracking-[-0.01em] text-[var(--admin-ink)]">
+            {formatARS(total)}
+          </span>
         </div>
 
         <button
           type="button"
           disabled={lines.length === 0 || processing}
           onClick={confirm}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-brand-solid py-2.5 font-semibold text-white hover:bg-brand-accent disabled:opacity-40"
+          className={`${ADMIN_ACTION_PRIMARY} mt-5 w-full`}
         >
-          <CheckCircle2 size={18} /> {processing ? "Procesando..." : "Confirmar venta"}
+          <CheckCircle2 size={14} strokeWidth={1.5} /> {processing ? "Procesando…" : "Confirmar venta"}
         </button>
 
         {message && (
-          <p className="rounded bg-neutral-100 p-2 text-xs text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">{message}</p>
+          <p
+            className={`mt-4 border-y border-[var(--admin-line)] py-3 text-[11px] uppercase leading-5 tracking-[0.1em] ${
+              messageOk ? "text-[var(--admin-positive)]" : "text-[var(--admin-danger)]"
+            }`}
+          >
+            {message}
+          </p>
         )}
       </aside>
     </div>

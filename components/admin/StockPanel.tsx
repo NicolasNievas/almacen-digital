@@ -1,6 +1,11 @@
 "use client";
 import { useState } from "react";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Minus, Plus, Search } from "lucide-react";
+import {
+  ADMIN_EYEBROW,
+  ADMIN_ROW,
+  ADMIN_TABLE_HEAD,
+} from "@/lib/admin-ui";
 import type { Product } from "@/lib/types";
 import { formatARS } from "@/lib/pricing";
 
@@ -18,68 +23,146 @@ export default function StockPanel({ initial, onSave }: Props) {
   const update = async (id: string, patch: Partial<Pick<Product, "stock" | "unit_price" | "active">>) => {
     const prev = items;
     setItems((xs) => xs.map((p) => (p.id === id ? { ...p, ...patch } : p))); // optimista
-    try { await onSave?.(id, patch); } catch { setItems(prev); }
+    try {
+      await onSave?.(id, patch);
+    } catch {
+      setItems(prev);
+    }
   };
-
-  const inputClass =
-    "rounded border border-neutral-300 bg-white text-neutral-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100";
 
   const filtered = items.filter((p) =>
     query.trim() === "" ? true : p.name.toLowerCase().includes(query.trim().toLowerCase()),
   );
 
   return (
-    <div className="overflow-x-auto p-4">
-      <div className="mb-3 flex items-center gap-2">
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Buscar por nombre..."
-          className={`${inputClass} w-full max-w-xs p-2 text-sm`}
-        />
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <label className="relative block w-full max-w-xs">
+          <span className="sr-only">Buscar producto en stock</span>
+          <Search
+            size={15}
+            strokeWidth={1.5}
+            className="pointer-events-none absolute bottom-2.5 left-0 text-[var(--admin-faint)]"
+          />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Buscar por nombre"
+            className="w-full appearance-none rounded-none border-0 border-b border-[var(--admin-line-strong)] bg-transparent py-2 pl-6 text-sm text-[var(--admin-ink)] outline-none transition-colors placeholder:text-[var(--admin-faint)] focus:border-[var(--admin-ink)]"
+          />
+        </label>
+        <p className={ADMIN_EYEBROW}>
+          {filtered.length} {filtered.length === 1 ? "producto" : "productos"}
+        </p>
       </div>
-      <table className="w-full min-w-[640px] text-sm">
-        <thead className="text-left text-neutral-500 dark:text-neutral-400">
-          <tr><th className="p-2">Producto</th><th>Stock</th><th>Precio unitario</th><th>Venta</th></tr>
-        </thead>
-        <tbody>
-          {filtered.map((p) => {
-            const low = p.stock < LOW_STOCK;
-            return (
-              <tr key={p.id} className={`border-t border-neutral-200 dark:border-neutral-800 ${!p.active ? "opacity-50" : ""}`}>
-                <td className="p-2 font-medium text-neutral-900 dark:text-neutral-100">
-                  {p.name}
-                  {low && (
-                    <span className="ml-2 inline-flex items-center gap-1 rounded bg-red-100 px-1.5 text-xs text-red-700 dark:bg-red-950/40 dark:text-red-300">
-                      <AlertTriangle size={12} /> {p.stock === 0 ? "Agotado" : "Stock crítico"}
-                    </span>
-                  )}
-                </td>
-                <td>
-                  <div className="flex items-center gap-1">
-                    <button className={`${inputClass} px-2`} onClick={() => update(p.id, { stock: Math.max(0, p.stock - 1) })}>−</button>
-                    <input type="number" min={0} className={`${inputClass} w-16 p-1 text-center`} value={p.stock}
-                      onChange={(e) => update(p.id, { stock: Math.max(0, Number(e.target.value)) })} />
-                    <button className={`${inputClass} px-2`} onClick={() => update(p.id, { stock: p.stock + 1 })}>+</button>
-                  </div>
-                </td>
-                <td>
-                  <input type="number" min={0} className={`${inputClass} w-28 p-1`} defaultValue={p.unit_price}
-                    onBlur={(e) => Number(e.target.value) !== p.unit_price && update(p.id, { unit_price: Number(e.target.value) })} />
-                  <span className="ml-2 text-neutral-400 dark:text-neutral-500">{formatARS(p.unit_price)}</span>
-                </td>
-                <td>
-                  <button role="switch" aria-checked={p.active} onClick={() => update(p.id, { active: !p.active })}
-                    className={`rounded-full px-3 py-1 text-xs font-medium ${p.active ? "bg-green-600 text-white" : "bg-neutral-300 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-200"}`}>
-                    {p.active ? "Activo" : "Pausado"}
-                  </button>
+
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[660px] border-collapse">
+          <thead>
+            <tr>
+              <th className={`${ADMIN_TABLE_HEAD} pl-0 pr-5`}>Producto</th>
+              <th className={`${ADMIN_TABLE_HEAD} pr-5`}>Stock</th>
+              <th className={`${ADMIN_TABLE_HEAD} pr-5`}>Precio unitario</th>
+              <th className={`${ADMIN_TABLE_HEAD} pr-0 text-right`}>Venta</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((p) => {
+              const low = p.stock < LOW_STOCK;
+              return (
+                <tr key={p.id} className={ADMIN_ROW}>
+                  <td className="py-3 pl-0 pr-5">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <span className="text-sm leading-5 text-[var(--admin-ink)]">{p.name}</span>
+                      {low && (
+                        <span className="inline-flex items-center gap-1 text-[10px] uppercase leading-none tracking-[0.1em] text-[var(--admin-warning)]">
+                          <AlertTriangle size={11} strokeWidth={1.5} />
+                          {p.stock === 0 ? "Agotado" : "Stock crítico"}
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="py-3 pr-5">
+                    <div className="inline-flex items-center border-b border-[var(--admin-line)]">
+                      <button
+                        type="button"
+                        aria-label={`Restar una unidad a ${p.name}`}
+                        onClick={() => void update(p.id, { stock: Math.max(0, p.stock - 1) })}
+                        className="inline-flex h-8 w-7 items-center justify-center text-[var(--admin-muted)] transition-colors hover:text-[var(--admin-ink)]"
+                      >
+                        <Minus size={13} strokeWidth={1.5} />
+                      </button>
+                      <input
+                        type="number"
+                        min={0}
+                        aria-label={`Stock de ${p.name}`}
+                        className="w-14 appearance-none bg-transparent py-1 text-center text-[13px] tabular-nums text-[var(--admin-ink)] outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                        value={p.stock}
+                        onChange={(e) =>
+                          void update(p.id, { stock: Math.max(0, Number(e.target.value)) })
+                        }
+                      />
+                      <button
+                        type="button"
+                        aria-label={`Sumar una unidad a ${p.name}`}
+                        onClick={() => void update(p.id, { stock: p.stock + 1 })}
+                        className="inline-flex h-8 w-7 items-center justify-center text-[var(--admin-muted)] transition-colors hover:text-[var(--admin-ink)]"
+                      >
+                        <Plus size={13} strokeWidth={1.5} />
+                      </button>
+                    </div>
+                  </td>
+                  <td className="py-3 pr-5">
+                    <div className="flex flex-col gap-0.5">
+                      <input
+                        type="number"
+                        min={0}
+                        aria-label={`Precio de ${p.name}`}
+                        className="w-28 appearance-none border-0 border-b border-[var(--admin-line)] bg-transparent py-1 text-[13px] tabular-nums text-[var(--admin-ink)] outline-none transition-colors focus:border-[var(--admin-ink)] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                        defaultValue={p.unit_price}
+                        onBlur={(e) =>
+                          Number(e.target.value) !== p.unit_price &&
+                          void update(p.id, { unit_price: Number(e.target.value) })
+                        }
+                      />
+                      <span className="text-[10px] tabular-nums text-[var(--admin-faint)]">
+                        {formatARS(p.unit_price)}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="py-3 pr-0 text-right">
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={p.active}
+                      aria-label={`${p.active ? "Pausar" : "Activar"} ${p.name}`}
+                      onClick={() => void update(p.id, { active: !p.active })}
+                      className="inline-flex items-center gap-2 text-[10px] font-medium uppercase leading-none tracking-[0.14em] text-[var(--admin-muted)] transition-colors hover:text-[var(--admin-ink)]"
+                    >
+                      <span
+                        className={`h-1.5 w-1.5 rounded-full ${
+                          p.active
+                            ? "bg-[var(--admin-positive)]"
+                            : "border border-[var(--admin-faint)] bg-transparent"
+                        }`}
+                      />
+                      {p.active ? "Activo" : "Pausado"}
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={4} className="border-b border-[var(--admin-line)] py-10 text-center text-[11px] uppercase tracking-[0.14em] text-[var(--admin-faint)]">
+                  Sin coincidencias
                 </td>
               </tr>
-            );
-          })}
-        </tbody>
-      </table>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

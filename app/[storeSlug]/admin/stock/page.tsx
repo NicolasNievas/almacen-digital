@@ -2,8 +2,17 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { Loader2, RefreshCw } from "lucide-react";
+import { AlertTriangle, Loader2, RefreshCw } from "lucide-react";
 import StockPanel from "@/components/admin/StockPanel";
+import AdminPageHeader from "@/components/admin/AdminPageHeader";
+import {
+  ADMIN_ACTION_GHOST,
+  ADMIN_EMPTY_TEXT,
+  ADMIN_EMPTY_TITLE,
+  ADMIN_ERROR,
+  ADMIN_EYEBROW,
+  ADMIN_LOADING,
+} from "@/lib/admin-ui";
 import { resolveAdminStoreSlug } from "@/lib/admin-store";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { fetchAdminStore, fetchProducts } from "@/lib/supabase/queries";
@@ -86,60 +95,88 @@ export default function StockPage() {
   const critical = products.filter((p) => p.stock < LOW_STOCK).sort((a, b) => a.stock - b.stock);
 
   return (
-      <div className="space-y-4">
-        <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
-          <div>
-            <h1 className="text-xl font-bold text-neutral-900 dark:text-neutral-100">Stock</h1>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">
-              Control rápido de existencias, precios y disponibilidad de productos en góndola.
-            </p>
-          </div>
+    <div className="space-y-8">
+      <AdminPageHeader
+        eyebrow="Inventario"
+        title="Stock"
+        description="Existencias, precio de lista y disponibilidad en góndola, en una sola lectura."
+        actions={
           <button
             type="button"
             onClick={() => configured && void load()}
-            className="flex shrink-0 items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-sm text-neutral-600 hover:text-neutral-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:text-white"
+            className={ADMIN_ACTION_GHOST}
           >
-            <RefreshCw size={14} /> Actualizar
+            <RefreshCw size={14} strokeWidth={1.5} /> Actualizar
           </button>
-        </div>
+        }
+      />
 
-      {error && <p className="rounded bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">{error}</p>}
+      {error && (
+        <p className={ADMIN_ERROR} role="alert">
+          {error}
+        </p>
+      )}
 
       {!configured ? (
-        <p className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-center text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
-          No pudimos cargar el stock en este momento. Volvé a intentar en unos minutos.
-        </p>
+        <div className="border-y border-[var(--admin-line)] py-16">
+          <p className={ADMIN_EMPTY_TITLE}>Stock no disponible</p>
+          <p className={`${ADMIN_EMPTY_TEXT} mt-2`}>
+            No pudimos cargar el inventario. Volvé a intentar en unos minutos.
+          </p>
+        </div>
       ) : loading ? (
-        <div className="flex items-center justify-center gap-2 py-20 text-neutral-500 dark:text-neutral-400">
-          <Loader2 className="h-5 w-5 animate-spin" /> Cargando productos...
+        <div className={ADMIN_LOADING}>
+          <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} /> Cargando inventario
         </div>
       ) : storeId ? (
-        <div className="space-y-4">
+        <>
           {critical.length > 0 && (
-            <section className="rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-900/60 dark:bg-amber-950/30">
-              <h2 className="border-b border-amber-200 p-4 text-sm font-semibold text-amber-900 dark:border-amber-900/60 dark:text-amber-200">
-                Reposición sugerida · {critical.length} producto(s) con stock crítico
-              </h2>
-              <ul className="divide-y divide-amber-200/70 dark:divide-amber-900/50">
+            <section aria-label="Reposición sugerida" className="border-t border-[var(--admin-line)] pt-5">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <p className={ADMIN_EYEBROW}>Reposición sugerida</p>
+                <p className="text-[11px] leading-none text-[var(--admin-muted)]">
+                  {critical.length} {critical.length === 1 ? "producto" : "productos"} por debajo de {LOW_STOCK}{" "}
+                  unidades
+                </p>
+              </div>
+              <ul className="mt-3 divide-y divide-[var(--admin-line)] border-y border-[var(--admin-line)]">
                 {critical.slice(0, 8).map((p) => (
-                  <li key={p.id} className="flex items-center justify-between p-3 text-sm">
-                    <span className="font-medium text-neutral-900 dark:text-neutral-100">{p.name}</span>
-                    <span className={p.stock === 0 ? "text-red-600 dark:text-red-400" : "text-amber-700 dark:text-amber-400"}>
+                  <li key={p.id} className="flex items-center justify-between gap-4 py-3">
+                    <span className="flex min-w-0 items-center gap-2 text-[13px] leading-5 text-[var(--admin-ink)]">
+                      <AlertTriangle
+                        size={13}
+                        strokeWidth={1.5}
+                        className="shrink-0 text-[var(--admin-warning)]"
+                      />
+                      <span className="truncate">{p.name}</span>
+                    </span>
+                    <span
+                      className={`shrink-0 text-[10px] uppercase leading-none tracking-[0.12em] ${
+                        p.stock === 0 ? "text-[var(--admin-danger)]" : "text-[var(--admin-warning)]"
+                      }`}
+                    >
                       {p.stock === 0 ? "Agotado" : `${p.stock} unidades`}
                     </span>
                   </li>
                 ))}
               </ul>
+              {critical.length > 8 && (
+                <p className="mt-2 text-[10px] uppercase tracking-[0.12em] text-[var(--admin-faint)]">
+                  y {critical.length - 8} más
+                </p>
+              )}
             </section>
           )}
-          <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
-            <StockPanel key={version} initial={products} onSave={handleSave} />
-          </div>
-        </div>
+
+          <StockPanel key={version} initial={products} onSave={handleSave} />
+        </>
       ) : (
-        <p className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-center text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
-          No se pudo identificar la tienda. Verificá que exista `ag-mayorista` en Supabase.
-        </p>
+        <div className="border-y border-[var(--admin-line)] py-16">
+          <p className={ADMIN_EMPTY_TITLE}>Tienda no identificada</p>
+          <p className={`${ADMIN_EMPTY_TEXT} mt-2`}>
+            Verificá que la tienda exista y que tu usuario tenga acceso.
+          </p>
+        </div>
       )}
     </div>
   );

@@ -1,8 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, Loader2, Plus, X } from "lucide-react";
 import { saveCategory } from "@/lib/supabase/queries";
+import {
+  ADMIN_ACTION_GHOST,
+  ADMIN_ACTION_PRIMARY,
+  ADMIN_EYEBROW,
+  ADMIN_ERROR,
+  ADMIN_ICON_BUTTON,
+  ADMIN_INPUT,
+  ADMIN_INPUT_INLINE,
+  ADMIN_MODAL_OVERLAY,
+  ADMIN_MODAL_PANEL,
+  ADMIN_TABLE_HEAD,
+} from "@/lib/admin-ui";
 import type { Category } from "@/lib/types";
 
 type Props = {
@@ -35,8 +47,18 @@ export default function CategoryManager({ categories, storeId, onClose, onSaved 
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const inputClass =
-    "w-full rounded-lg border border-neutral-300 bg-white px-2 py-1.5 text-sm text-neutral-900 outline-none focus:border-brand dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100";
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !busyId) onClose();
+    };
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = previous || "unset";
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [busyId, onClose]);
 
   const saveRow = async (row: Row) => {
     if (!row.name.trim()) return;
@@ -74,102 +96,123 @@ export default function CategoryManager({ categories, storeId, onClose, onSaved 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4">
-      <div className="my-6 w-full max-w-lg space-y-4 rounded-xl border border-neutral-200 bg-white p-5 shadow-lg dark:border-neutral-800 dark:bg-neutral-900">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-100">Categorías</h2>
-          <button type="button" onClick={onClose} aria-label="Cerrar" className="text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200">
-            <X size={20} />
+    <div className={`${ADMIN_MODAL_OVERLAY} items-start`} role="dialog" aria-modal="true" aria-label="Categorías">
+      <div className={`${ADMIN_MODAL_PANEL} max-w-xl`}>
+        <div className="flex items-start justify-between gap-4 border-b border-[var(--admin-line)] px-6 py-5">
+          <div>
+            <p className={ADMIN_EYEBROW}>Catálogo</p>
+            <h2 data-display className="mt-2 [font-family:var(--store-font-heading)] text-[26px] font-normal leading-[1.1] text-[var(--admin-ink)]">
+              Categorías
+            </h2>
+          </div>
+          <button type="button" onClick={onClose} className={ADMIN_ICON_BUTTON} aria-label="Cerrar">
+            <X size={18} strokeWidth={1.5} />
           </button>
         </div>
 
-        {error && <p className="rounded bg-red-50 p-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">{error}</p>}
+        <div className="space-y-6 px-6 py-6">
+          {error && (
+            <p className={ADMIN_ERROR} role="alert">
+              {error}
+            </p>
+          )}
 
-        <p className="text-xs text-neutral-500 dark:text-neutral-400">
-          El <b>orden de prioridad en la tienda</b> se ordena de menor a mayor (1 aparece primero). Ante el mismo
-          número, se ordena por nombre. No hace falta que los números sean consecutivos.
-        </p>
+          <p className="text-[12px] leading-5 text-[var(--admin-muted)]">
+            El orden de prioridad se lee de menor a mayor: <span className="text-[var(--admin-ink)]">1</span> aparece
+            primero. Ante el mismo número se ordena por nombre.
+          </p>
 
-        <div className="flex items-center gap-2 px-0.5 text-[11px] font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500">
-          <span className="flex-1">Nombre</span>
-          <span className="w-20 text-center">Orden</span>
-          <span className="w-9" />
-        </div>
+          {rows.length === 0 ? (
+            <p className="border-y border-[var(--admin-line)] py-8 text-center text-[12px] uppercase tracking-[0.14em] text-[var(--admin-faint)]">
+              Todavía no hay categorías
+            </p>
+          ) : (
+            <div>
+              <div className="flex items-center gap-3">
+                <span className={`${ADMIN_TABLE_HEAD} flex-1 border-b-0 pb-2`}>Nombre</span>
+                <span className={`${ADMIN_TABLE_HEAD} w-20 border-b-0 pb-2 text-center`}>Orden</span>
+                <span className="w-10" />
+              </div>
+              <ul className="divide-y divide-[var(--admin-line)] border-y border-[var(--admin-line)]">
+                {rows.map((row, index) => (
+                  <li key={row.id} className="flex items-center gap-3 py-2">
+                    <input
+                      className={`${ADMIN_INPUT_INLINE} flex-1`}
+                      value={row.name}
+                      aria-label={`Nombre de ${row.name}`}
+                      onChange={(e) =>
+                        setRows((prev) =>
+                          prev.map((r, i) => (i === index ? { ...r, name: e.target.value } : r)),
+                        )
+                      }
+                    />
+                    <input
+                      type="number"
+                      className={`${ADMIN_INPUT_INLINE} w-20 text-center tabular-nums`}
+                      value={row.sort_order}
+                      aria-label={`Orden de ${row.name}`}
+                      title="Orden de prioridad en la tienda (menor = primero)"
+                      onChange={(e) =>
+                        setRows((prev) =>
+                          prev.map((r, i) => (i === index ? { ...r, sort_order: e.target.value } : r)),
+                        )
+                      }
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void saveRow(row)}
+                      disabled={busyId === row.id}
+                      className={ADMIN_ICON_BUTTON}
+                      aria-label={`Guardar ${row.name}`}
+                    >
+                      {busyId === row.id ? (
+                        <Loader2 size={15} strokeWidth={1.5} className="animate-spin" />
+                      ) : (
+                        <Check size={15} strokeWidth={1.5} />
+                      )}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
-        <ul className="space-y-2">
-          {rows.map((row, index) => (
-            <li key={row.id} className="flex items-center gap-2">
-              <input
-                className={inputClass}
-                value={row.name}
-                onChange={(e) => setRows((prev) => prev.map((r, i) => (i === index ? { ...r, name: e.target.value } : r)))}
-              />
-              <input
-                type="number"
-                className={`${inputClass} w-20`}
-                value={row.sort_order}
-                title="Orden de prioridad en la tienda (menor = primero)"
-                onChange={(e) =>
-                  setRows((prev) => prev.map((r, i) => (i === index ? { ...r, sort_order: e.target.value } : r)))
-                }
-              />
+          <div className="border-t border-[var(--admin-line)] pt-5">
+            <p className={ADMIN_EYEBROW}>Nueva categoría</p>
+            <div className="mt-4 flex items-end gap-3">
+              <label className="flex-1">
+                <span className="sr-only">Nombre de la nueva categoría</span>
+                <input
+                  className={ADMIN_INPUT}
+                  placeholder="Nombre"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                />
+              </label>
+              <label className="w-20">
+                <span className="sr-only">Orden de la nueva categoría</span>
+                <input
+                  type="number"
+                  className={`${ADMIN_INPUT} text-center tabular-nums`}
+                  value={newOrder}
+                  title="Orden de prioridad en la tienda (menor = primero)"
+                  onChange={(e) => setNewOrder(e.target.value)}
+                />
+              </label>
               <button
                 type="button"
-                onClick={() => void saveRow(row)}
-                disabled={busyId === row.id}
-                className="rounded-lg bg-brand-solid p-2 text-white hover:bg-brand-accent disabled:opacity-50"
-                aria-label="Guardar"
+                onClick={() => void addCategory()}
+                disabled={!newName.trim() || busyId === slugify(newName)}
+                className={ADMIN_ACTION_PRIMARY}
               >
-                {busyId === row.id ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
+                <Plus size={13} strokeWidth={1.5} /> Agregar
               </button>
-            </li>
-          ))}
-          {rows.length === 0 && <li className="text-sm text-neutral-500 dark:text-neutral-400">No hay categorías todavía.</li>}
-        </ul>
-
-        <div className="space-y-2 border-t border-neutral-200 pt-4 dark:border-neutral-800">
-          <p className="text-xs font-medium text-neutral-600 dark:text-neutral-400">Nueva categoría</p>
-          <div className="flex items-end gap-2">
-            <label className="flex-1 space-y-1">
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500">
-                Nombre
-              </span>
-              <input
-                className={inputClass}
-                placeholder="Nombre"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-              />
-            </label>
-            <label className="space-y-1">
-              <span className="block text-[11px] font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500">
-                Orden
-              </span>
-              <input
-                type="number"
-                className={`${inputClass} w-20`}
-                value={newOrder}
-                title="Orden de prioridad en la tienda (menor = primero)"
-                onChange={(e) => setNewOrder(e.target.value)}
-              />
-            </label>
-            <button
-              type="button"
-              onClick={() => void addCategory()}
-              disabled={!newName.trim() || busyId === slugify(newName)}
-              className="flex items-center gap-1 rounded-lg bg-brand-solid px-3 py-2 text-sm font-semibold text-white hover:bg-brand-accent disabled:opacity-50"
-            >
-              <Plus size={15} /> Agregar
-            </button>
+            </div>
           </div>
         </div>
 
-        <div className="flex justify-end border-t border-neutral-200 pt-4 dark:border-neutral-800">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg border border-neutral-300 px-4 py-2 text-sm text-neutral-700 hover:text-neutral-900 dark:border-neutral-700 dark:text-neutral-300 dark:hover:text-white"
-          >
+        <div className="flex justify-end border-t border-[var(--admin-line)] px-6 py-5">
+          <button type="button" onClick={onClose} className={ADMIN_ACTION_GHOST}>
             Listo
           </button>
         </div>

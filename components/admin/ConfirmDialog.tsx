@@ -2,6 +2,11 @@
 
 import { useEffect } from "react";
 import { AlertTriangle, Loader2 } from "lucide-react";
+import {
+  ADMIN_ACTION_GHOST,
+  ADMIN_EYEBROW,
+  ADMIN_MODAL_OVERLAY,
+} from "@/lib/admin-ui";
 
 type Props = {
   title: string;
@@ -32,41 +37,43 @@ export default function ConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      className={`${ADMIN_MODAL_OVERLAY} items-center`}
       role="dialog"
       aria-modal="true"
       onClick={() => !loading && onCancel()}
     >
       <div
-        className="w-full max-w-sm space-y-4 rounded-xl border border-neutral-200 bg-white p-5 shadow-lg dark:border-neutral-800 dark:bg-neutral-900"
+        className="w-full max-w-sm border border-[var(--admin-line)] bg-[var(--admin-canvas)]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100 dark:bg-red-950/40">
-            <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
-          </span>
-          <div className="space-y-1">
-            <h2 className="text-base font-bold text-neutral-900 dark:text-neutral-100">{title}</h2>
-            <div className="text-sm text-neutral-600 dark:text-neutral-400">{message}</div>
+        <div className="space-y-4 px-6 py-6">
+          <div className="flex items-start gap-3">
+            <AlertTriangle
+              size={18}
+              strokeWidth={1.5}
+              className="mt-0.5 shrink-0 text-[var(--admin-danger)]"
+            />
+            <div className="space-y-2">
+              <p className={ADMIN_EYEBROW}>Confirmación</p>
+              <h2 data-display className="[font-family:var(--store-font-heading)] text-[22px] font-normal leading-[1.15] text-[var(--admin-ink)]">
+                {title}
+              </h2>
+              <div className="text-[13px] leading-6 text-[var(--admin-muted)]">{message}</div>
+            </div>
           </div>
         </div>
 
-        <div className="flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={loading}
-            className="rounded-lg border border-neutral-300 px-4 py-2 text-sm text-neutral-700 hover:text-neutral-900 disabled:opacity-50 dark:border-neutral-700 dark:text-neutral-300 dark:hover:text-white"
-          >
+        <div className="flex flex-col-reverse gap-2 border-t border-[var(--admin-line)] px-6 py-4 sm:flex-row sm:justify-end">
+          <button type="button" onClick={onCancel} disabled={loading} className={ADMIN_ACTION_GHOST}>
             {cancelLabel}
           </button>
           <button
             type="button"
             onClick={onConfirm}
             disabled={loading}
-            className="flex items-center gap-1.5 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-[var(--admin-danger)] px-4 py-2.5 text-[11px] font-medium uppercase leading-none tracking-[0.1em] text-[var(--admin-on-danger)] transition-colors duration-200 hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-[var(--admin-danger)]"
           >
-            {loading && <Loader2 size={15} className="animate-spin" />}
+            {loading && <Loader2 size={13} strokeWidth={1.5} className="animate-spin" />}
             {confirmLabel}
           </button>
         </div>
