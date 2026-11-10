@@ -1,6 +1,13 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { useParams } from "next/navigation";
 import Image from "next/image";
 import {
@@ -9,11 +16,16 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardList,
+  CreditCard,
   Loader2,
+  MapPin,
   Package,
   Printer,
   RefreshCw,
+  StickyNote,
+  UserRound,
   X,
+  type LucideIcon,
 } from "lucide-react";
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
 import {
@@ -26,7 +38,6 @@ import {
   ADMIN_GRID_HEAD,
   ADMIN_GRID_ROW,
   ADMIN_LOADING,
-  ADMIN_TABLE_GRID,
 } from "@/lib/admin-ui";
 import { resolveAdminStoreSlug } from "@/lib/admin-store";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
@@ -94,8 +105,37 @@ function formatDate(iso: string): string {
   });
 }
 
-function buildTicketItem(item: OrderItemRow, product?: Product): TicketItem {
-  const listUnitPrice =
+/**
+ * Bloque de logística del pedido expandido (cliente, entrega, pago, notas).
+ * Vive en la columna izquierda del sub-panel y no compite con la tabla: cada
+ * dato lleva su etiqueta arriba y un icono fino de Lucide a la izquierda.
+ */
+function OrderPanelMeta({
+  icon: Icon,
+  label,
+  children,
+}: {
+  icon: LucideIcon;
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <Icon
+        size={14}
+        strokeWidth={1.5}
+        aria-hidden
+        className="mt-[3px] shrink-0 text-[var(--admin-faint)]"
+      />
+      <div className="min-w-0 space-y-1">
+        <p className={ADMIN_EYEBROW}>{label}</p>
+        <div className="text-[13px] leading-5 text-[var(--admin-ink)]">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function buildTicketItem(item: OrderItemRow, product?: Product): TicketItem {  const listUnitPrice =
     product?.unit_price ?? (item.quantity > 0 ? item.line_total / item.quantity : item.line_total);
 
   let note: string | undefined;
@@ -457,98 +497,128 @@ export default function PedidosPage() {
                     </div>
 
                     {open && (
-                      <div
-                        role="row"
-                        className="border-b border-[var(--admin-line)] bg-black/[0.045] dark:bg-white/[0.035]"
-                      >
-                        <div role="cell" className="py-4">
-                          {(order.notes || order.delivery_address || order.payment_method) && (
-                            <dl className="mb-3 flex flex-wrap items-baseline gap-x-10 gap-y-2 border-b border-[var(--admin-line)] pb-3">
-                              {order.delivery_address && (
-                                <div className="flex items-baseline gap-3">
-                                  <dt className={`${ADMIN_EYEBROW} w-20 shrink-0`}>Dirección</dt>
-                                  <dd className="text-[12px] leading-5 text-[var(--admin-ink)]">
-                                    {order.delivery_address}
-                                  </dd>
-                                </div>
-                              )}
-                              {order.payment_method && (
-                                <div className="flex items-baseline gap-3">
-                                  <dt className={`${ADMIN_EYEBROW} w-20 shrink-0`}>Pago</dt>
-                                  <dd className="text-[12px] leading-5 text-[var(--admin-ink)]">
-                                    {order.payment_method}
-                                  </dd>
-                                </div>
-                              )}
-                              {order.notes && (
-                                <div className="flex min-w-0 items-baseline gap-3">
-                                  <dt className={`${ADMIN_EYEBROW} w-20 shrink-0`}>Notas</dt>
-                                  <dd className="min-w-0 text-[12px] leading-5 text-[var(--admin-ink)]">
-                                    {order.notes}
-                                  </dd>
-                                </div>
-                              )}
-                            </dl>
-                          )}
-                          <div className="divide-y divide-[var(--admin-line)]">
-                            {order.items.map((item, index) => {
-                              const unit =
-                                item.quantity > 0 ? item.line_total / item.quantity : item.line_total;
-                              const detail = [
-                                item.variant?.size ? `Talle ${item.variant.size}` : null,
-                                item.variant?.color,
-                                item.note ? `Nota: ${item.note}` : null,
-                              ]
-                                .filter(Boolean)
-                                .join(" · ");
-
-                              return (
-                                <div
-                                  key={`${order.id}-${index}`}
-                                  className={`${ADMIN_TABLE_GRID} items-center py-3`}
-                                >
-                                  <div className="col-span-3 flex min-w-0 items-center gap-3">
-                                    <div className="relative h-10 w-10 shrink-0 overflow-hidden bg-[var(--admin-canvas)]">
-                                      {item.image_url ? (
-                                        <Image
-                                          src={item.image_url}
-                                          alt={item.product_name}
-                                          fill
-                                          sizes="40px"
-                                          className="object-cover"
-                                        />
-                                      ) : (
-                                        <div className="flex h-full w-full items-center justify-center text-[var(--admin-faint)]">
-                                          <Package size={15} strokeWidth={1.5} />
-                                        </div>
-                                      )}
-                                    </div>
-                                    <div className="min-w-0">
-                                      <span className="block truncate text-[13px] leading-5 text-[var(--admin-ink)]">
-                                        {item.product_name}
+                      <div role="row" className="border-b border-[var(--admin-line)]">
+                        <div
+                          role="cell"
+                          className="border-l-2 border-l-[var(--store-primary,var(--admin-accent))] py-6"
+                        >
+                          <div className="grid gap-8 px-8 lg:grid-cols-12">
+                            <div className="flex flex-col gap-5 lg:col-span-4">
+                              <OrderPanelMeta icon={UserRound} label="Cliente">
+                                {order.customer_name ? (
+                                  <>
+                                    <span className="block truncate">{order.customer_name}</span>
+                                    {order.customer_phone && (
+                                      <span className="block text-[12px] tabular-nums text-[var(--admin-muted)]">
+                                        {order.customer_phone}
                                       </span>
-                                      {detail && (
-                                        <span className="block truncate text-[11px] leading-4 text-[var(--admin-muted)]">
-                                          {detail}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                  <div className="col-start-4 flex flex-col items-end gap-0.5 whitespace-nowrap leading-4">
-                                    <span className="text-[12px] tabular-nums text-[var(--admin-ink)]">
-                                      {item.quantity} un.
+                                    )}
+                                  </>
+                                ) : (
+                                  <span className="text-[var(--admin-muted)]">Consumidor final</span>
+                                )}
+                              </OrderPanelMeta>
+
+                              <OrderPanelMeta icon={MapPin} label="Entrega">
+                                {order.source === "POS" ? (
+                                  "Venta presencial"
+                                ) : order.fulfillment_type === "DELIVERY" ? (
+                                  <>
+                                    <span className="block">Delivery</span>
+                                    <span className="block text-[12px] leading-5 text-[var(--admin-muted)]">
+                                      {order.delivery_address ?? "Dirección a coordinar"}
                                     </span>
-                                    <span className="text-[10px] tabular-nums text-[var(--admin-muted)]">
-                                      {formatARS(unit)} c/u
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="block">Retiro en local</span>
+                                    <span className="block text-[12px] tabular-nums text-[var(--admin-muted)]">
+                                      {order.pickup_time?.slice(0, 5) ?? "Horario a coordinar"}
                                     </span>
-                                  </div>
-                                  {/* Mismo track que la columna Total de la fila principal. */}
-                                  <div className="col-start-5 text-center text-[13px] tabular-nums text-[var(--admin-ink)]">
-                                    {formatARS(item.line_total)}
-                                  </div>
-                                </div>
-                              );
-                            })}
+                                  </>
+                                )}
+                              </OrderPanelMeta>
+
+                              {order.payment_method && (
+                                <OrderPanelMeta icon={CreditCard} label="Pago">
+                                  {order.payment_method}
+                                </OrderPanelMeta>
+                              )}
+
+                              {order.notes && (
+                                <OrderPanelMeta icon={StickyNote} label="Notas">
+                                  <span className="block text-[12px] leading-5 text-[var(--admin-muted)]">
+                                    {order.notes}
+                                  </span>
+                                </OrderPanelMeta>
+                              )}
+                            </div>
+
+                            <div className="lg:col-span-8">
+                              <p className={`${ADMIN_EYEBROW} mb-1`}>
+                                {order.items.length} {order.items.length === 1 ? "ítem" : "ítems"}
+                              </p>
+                              <ul className="divide-y divide-[var(--admin-line)]">
+                                {order.items.map((item, index) => {
+                                  const unit =
+                                    item.quantity > 0 ? item.line_total / item.quantity : item.line_total;
+                                  const detail = [
+                                    item.variant?.size ? `Talle ${item.variant.size}` : null,
+                                    item.variant?.color,
+                                    item.note ? `Nota: ${item.note}` : null,
+                                  ]
+                                    .filter(Boolean)
+                                    .join(" · ");
+
+                                  return (
+                                    <li
+                                      key={`${order.id}-${index}`}
+                                      className="flex items-center gap-4 py-3.5"
+                                    >
+                                      <div className="relative h-12 w-12 shrink-0 overflow-hidden bg-[var(--admin-canvas)]">
+                                        {item.image_url ? (
+                                          <Image
+                                            src={item.image_url}
+                                            alt={item.product_name}
+                                            fill
+                                            sizes="48px"
+                                            className="object-cover"
+                                          />
+                                        ) : (
+                                          <div className="flex h-full w-full items-center justify-center text-[var(--admin-faint)]">
+                                            <Package size={16} strokeWidth={1.5} />
+                                          </div>
+                                        )}
+                                      </div>
+                                      <div className="min-w-0 flex-1">
+                                        <p className="truncate text-[13px] leading-5 text-[var(--admin-ink)]">
+                                          {item.product_name}
+                                        </p>
+                                        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                                          {detail && (
+                                            <span className="truncate text-[11px] leading-4 text-[var(--admin-muted)]">
+                                              {detail}
+                                            </span>
+                                          )}
+                                          <span className="inline-flex items-center whitespace-nowrap rounded-full bg-[var(--admin-surface)] px-2 py-0.5 text-[10px] tabular-nums leading-4 text-[var(--admin-muted)]">
+                                            {item.quantity} un. × {formatARS(unit)} c/u
+                                          </span>
+                                        </div>
+                                      </div>
+                                      <span className="shrink-0 whitespace-nowrap text-[13px] tabular-nums text-[var(--admin-ink)]">
+                                        {formatARS(item.line_total)}
+                                      </span>
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                              <div className="mt-3 flex items-baseline justify-between gap-4 border-t border-[var(--admin-line)] pt-3">
+                                <span className={ADMIN_EYEBROW}>Total del pedido</span>
+                                <span className="whitespace-nowrap text-[15px] tabular-nums text-[var(--admin-ink)]">
+                                  {formatARS(order.total)}
+                                </span>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
