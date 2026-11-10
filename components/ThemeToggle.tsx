@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 import { Moon, Sun } from "lucide-react";
-import { THEME_EVENT, useTheme } from "@/lib/theme";
+import { applyTheme, useTheme } from "@/lib/theme";
 
 type Props = {
   /** Permite adoptar el lenguaje del back-office sin duplicar el botón. */
@@ -13,15 +13,7 @@ export default function ThemeToggle({ className }: Props) {
   const theme = useTheme();
 
   const toggle = useCallback(() => {
-    const root = document.documentElement;
-    const next = root.classList.contains("dark") ? "light" : "dark";
-    root.classList.toggle("dark", next === "dark");
-    try {
-      localStorage.setItem("theme", next);
-    } catch {
-      // localStorage puede estar bloqueado; ignoramos.
-    }
-    window.dispatchEvent(new Event(THEME_EVENT));
+    applyTheme(document.documentElement.classList.contains("dark") ? "light" : "dark");
   }, []);
 
   const isDark = theme === "dark";

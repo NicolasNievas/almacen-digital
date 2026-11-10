@@ -14,11 +14,11 @@ import {
   Tags,
   X,
 } from "lucide-react";
-import ThemeToggle from "@/components/ThemeToggle";
 import { adminSectionHref } from "@/lib/admin-store";
 import type { Store } from "@/lib/types";
 import AdminStoreSwitcher from "./AdminStoreSwitcher";
 import SignOutButton from "./SignOutButton";
+import ThemeSwitch from "./ThemeSwitch";
 
 type Props = {
   stores: Store[];
@@ -26,7 +26,7 @@ type Props = {
   isSuperadmin: boolean;
 };
 
-export const SIDEBAR_WIDTH = 280;
+export const SIDEBAR_WIDTH = 288;
 
 const NAV = [
   { section: "", label: "Métricas", icon: LayoutDashboard },
@@ -37,9 +37,9 @@ const NAV = [
 ];
 
 /**
- * Shell fijo del back-office boutique.
+ * Shell fijo del back-office.
  *
- * Desktop: columna de 280px a la izquierda con identidad, navegación y
+ * Desktop: columna de 288px a la izquierda con identidad, navegación y
  * controles de cuenta. Mobile: barra superior mínima + drawer con el mismo
  * contenido. La navegación activa se marca con una línea de acento y sin
  * píldoras ni sombras.
@@ -84,7 +84,7 @@ export default function AdminSidebar({ stores, activeStore, isSuperadmin }: Prop
           className="flex min-w-0 items-baseline gap-2 text-[var(--admin-ink)]"
           aria-label={`${activeStore.name} — Administración`}
         >
-          <span className="truncate [font-family:var(--store-font-heading)] text-[22px] leading-none tracking-[-0.01em]">
+          <span className="truncate [font-family:var(--admin-display-font)] text-[22px] leading-none tracking-[-0.01em]">
             {activeStore.name}
           </span>
           <span className="text-[9px] font-medium uppercase tracking-[0.2em] text-[var(--admin-faint)]">
@@ -113,19 +113,19 @@ export default function AdminSidebar({ stores, activeStore, isSuperadmin }: Prop
 
       <aside
         id="admin-sidebar"
-        className={`fixed inset-y-0 left-0 z-50 flex w-[280px] flex-col border-r border-[var(--admin-line)] bg-[var(--admin-canvas)] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-72 max-w-[86vw] flex-col border-r border-[var(--admin-line)] bg-[var(--admin-canvas)] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none lg:translate-x-0 ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
         aria-label="Navegación de administración"
       >
-        <div className="flex items-start justify-between border-b border-[var(--admin-line)] px-6 py-7">
+        <div className="flex items-start justify-between border-b border-[var(--admin-line)] px-7 py-7">
           <div className="min-w-0">
             <p className="text-[9px] font-medium uppercase leading-none tracking-[0.24em] text-[var(--admin-faint)]">
               Administración
             </p>
             <Link
               href={base}
-              className="mt-3 block truncate [font-family:var(--store-font-heading)] text-[28px] font-normal leading-[1.05] tracking-[-0.01em] text-[var(--admin-ink)] transition-opacity duration-200 hover:opacity-70 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-4 focus-visible:outline-[var(--admin-ink)]"
+              className="mt-3 block truncate [font-family:var(--admin-display-font)] text-[28px] font-normal leading-[1.05] tracking-[-0.01em] text-[var(--admin-ink)] transition-opacity duration-200 hover:opacity-70 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-4 focus-visible:outline-[var(--admin-ink)]"
             >
               {activeStore.name}
             </Link>
@@ -144,7 +144,7 @@ export default function AdminSidebar({ stores, activeStore, isSuperadmin }: Prop
         </div>
 
         <nav className="flex-1 overflow-y-auto overscroll-contain py-6" aria-label="Secciones del panel">
-          <p className="px-6 text-[9px] font-medium uppercase leading-none tracking-[0.22em] text-[var(--admin-faint)]">
+          <p className="px-7 text-[9px] font-medium uppercase leading-none tracking-[0.22em] text-[var(--admin-faint)]">
             Panel
           </p>
           <ul className="mt-3">
@@ -157,7 +157,7 @@ export default function AdminSidebar({ stores, activeStore, isSuperadmin }: Prop
                   <Link
                     href={href}
                     aria-current={active ? "page" : undefined}
-                    className={`group flex items-center gap-3 border-l-2 py-3 pl-5 pr-6 text-[11px] font-medium uppercase leading-none tracking-[0.1em] transition-colors duration-200 motion-reduce:transition-none ${
+                    className={`group flex items-center gap-3 border-l-2 py-3.5 pl-[26px] pr-7 text-[11px] font-medium uppercase leading-none tracking-[0.1em] transition-colors duration-200 motion-reduce:transition-none ${
                       active
                         ? "border-[var(--admin-accent)] bg-[var(--admin-surface)] text-[var(--admin-ink)]"
                         : "border-transparent text-[var(--admin-muted)] hover:border-[var(--admin-line-strong)] hover:bg-[var(--admin-surface)] hover:text-[var(--admin-ink)]"
@@ -174,7 +174,7 @@ export default function AdminSidebar({ stores, activeStore, isSuperadmin }: Prop
             })}
           </ul>
 
-          <div className="mt-8 border-t border-[var(--admin-line)] px-6 pt-6">
+          <div className="mt-8 border-t border-[var(--admin-line)] px-7 pt-6">
             <Link
               href={`/${activeStore.slug}`}
               className="inline-flex items-center gap-1.5 text-[10px] font-medium uppercase leading-none tracking-[0.14em] text-[var(--admin-muted)] transition-colors hover:text-[var(--admin-ink)]"
@@ -194,7 +194,7 @@ export default function AdminSidebar({ stores, activeStore, isSuperadmin }: Prop
           </div>
         </nav>
 
-        <div className="border-t border-[var(--admin-line)] px-6 py-5">
+        <div className="border-t border-[var(--admin-line)] px-7 pb-14 pt-6">
           <p className="text-[9px] font-medium uppercase leading-none tracking-[0.22em] text-[var(--admin-faint)]">
             Tienda activa
           </p>
@@ -202,9 +202,9 @@ export default function AdminSidebar({ stores, activeStore, isSuperadmin }: Prop
             <AdminStoreSwitcher stores={stores} activeSlug={activeStore.slug} />
           </div>
 
-          <div className="mt-5 flex items-center justify-between gap-2 border-t border-[var(--admin-line)] pt-4">
-            <ThemeToggle className="inline-flex h-9 w-9 items-center justify-center text-[var(--admin-muted)] transition-colors hover:text-[var(--admin-ink)] focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-[var(--admin-ink)]" />
-            <SignOutButton className="inline-flex items-center gap-1.5 text-[10px] font-medium uppercase leading-none tracking-[0.12em] text-[var(--admin-muted)] transition-colors hover:text-[var(--admin-ink)] disabled:opacity-50" />
+          <div className="mt-5 space-y-3 border-t border-[var(--admin-line)] pt-4">
+            <ThemeSwitch />
+            <SignOutButton className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-[var(--admin-line-strong)] px-4 text-[10px] font-medium uppercase leading-none tracking-[0.12em] text-[var(--admin-muted)] transition-colors duration-200 hover:border-[var(--admin-ink)] hover:text-[var(--admin-ink)] disabled:opacity-40 motion-reduce:transition-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-[var(--admin-ink)]" />
           </div>
         </div>
       </aside>
