@@ -458,26 +458,33 @@ export default function PedidosPage() {
                     {open && (
                       <div
                         role="row"
-                        className="border-b border-[var(--admin-line)] bg-[var(--admin-surface)]"
+                        className="border-b border-[var(--admin-line)] bg-black/[0.045] dark:bg-black/25"
                       >
-                        <div role="cell" className="py-5">
+                        <div role="cell" className="py-4">
                           {(order.notes || order.delivery_address || order.payment_method) && (
-                            <div className="mb-4 space-y-1 border-b border-[var(--admin-line)] pb-4 text-[12px] leading-5 text-[var(--admin-muted)]">
+                            <div className="mb-1 flex flex-wrap items-baseline gap-x-8 gap-y-2 border-b border-[var(--admin-line)] pb-3">
                               {order.delivery_address && (
-                                <p>
-                                  <span className="text-[var(--admin-ink)]">Dirección</span>{" "}
-                                  {order.delivery_address}
+                                <p className="flex items-baseline gap-2">
+                                  <span className={ADMIN_EYEBROW}>Dirección</span>
+                                  <span className="text-[12px] leading-5 text-[var(--admin-ink)]">
+                                    {order.delivery_address}
+                                  </span>
                                 </p>
                               )}
                               {order.payment_method && (
-                                <p>
-                                  <span className="text-[var(--admin-ink)]">Pago</span>{" "}
-                                  {order.payment_method}
+                                <p className="flex items-baseline gap-2">
+                                  <span className={ADMIN_EYEBROW}>Pago</span>
+                                  <span className="text-[12px] leading-5 text-[var(--admin-ink)]">
+                                    {order.payment_method}
+                                  </span>
                                 </p>
                               )}
                               {order.notes && (
-                                <p>
-                                  <span className="text-[var(--admin-ink)]">Notas</span> {order.notes}
+                                <p className="flex items-baseline gap-2">
+                                  <span className={ADMIN_EYEBROW}>Notas</span>
+                                  <span className="text-[12px] leading-5 text-[var(--admin-ink)]">
+                                    {order.notes}
+                                  </span>
                                 </p>
                               )}
                             </div>
@@ -486,24 +493,32 @@ export default function PedidosPage() {
                             {order.items.map((item, index) => {
                               const unit =
                                 item.quantity > 0 ? item.line_total / item.quantity : item.line_total;
+                              const detail = [
+                                item.variant?.size ? `Talle ${item.variant.size}` : null,
+                                item.variant?.color,
+                                item.note ? `Nota: ${item.note}` : null,
+                              ]
+                                .filter(Boolean)
+                                .join(" · ");
+
                               return (
                                 <div
                                   key={`${order.id}-${index}`}
                                   className={`${ADMIN_TABLE_GRID} items-center py-3`}
                                 >
-                                  <div className="col-span-4 flex min-w-0 items-center gap-3">
-                                    <div className="relative h-11 w-11 shrink-0 overflow-hidden bg-[var(--admin-canvas)]">
+                                  <div className="col-span-3 flex min-w-0 items-center gap-3">
+                                    <div className="relative h-10 w-10 shrink-0 overflow-hidden bg-[var(--admin-canvas)]">
                                       {item.image_url ? (
                                         <Image
                                           src={item.image_url}
                                           alt={item.product_name}
                                           fill
-                                          sizes="44px"
+                                          sizes="40px"
                                           className="object-cover"
                                         />
                                       ) : (
                                         <div className="flex h-full w-full items-center justify-center text-[var(--admin-faint)]">
-                                          <Package size={16} strokeWidth={1.5} />
+                                          <Package size={15} strokeWidth={1.5} />
                                         </div>
                                       )}
                                     </div>
@@ -511,26 +526,24 @@ export default function PedidosPage() {
                                       <span className="block truncate text-[13px] leading-5 text-[var(--admin-ink)]">
                                         {item.product_name}
                                       </span>
-                                      {(item.variant?.size || item.variant?.color || item.note) && (
+                                      {detail && (
                                         <span className="block truncate text-[11px] leading-4 text-[var(--admin-muted)]">
-                                          {[
-                                            item.variant?.size ? `Talle ${item.variant.size}` : null,
-                                            item.variant?.color,
-                                            item.note ? `Nota: ${item.note}` : null,
-                                          ]
-                                            .filter(Boolean)
-                                            .join(" · ")}
+                                          {detail}
                                         </span>
                                       )}
                                     </div>
                                   </div>
-                                  <div className="col-start-5 flex flex-col items-end text-right">
-                                    <span className="text-[13px] tabular-nums text-[var(--admin-ink)]">
-                                      {formatARS(item.line_total)}
+                                  <div className="col-start-4 flex flex-col items-end leading-4">
+                                    <span className="text-[12px] tabular-nums text-[var(--admin-ink)]">
+                                      {item.quantity} un.
                                     </span>
                                     <span className="text-[10px] tabular-nums text-[var(--admin-muted)]">
-                                      {item.quantity} un. × {formatARS(unit)}
+                                      {formatARS(unit)} c/u
                                     </span>
+                                  </div>
+                                  {/* Mismo track que la columna Total de la fila principal. */}
+                                  <div className="col-start-5 text-center text-[13px] tabular-nums text-[var(--admin-ink)]">
+                                    {formatARS(item.line_total)}
                                   </div>
                                 </div>
                               );
@@ -539,7 +552,6 @@ export default function PedidosPage() {
                         </div>
                       </div>
                     )}
-
                   </Fragment>
                 );
               })}
