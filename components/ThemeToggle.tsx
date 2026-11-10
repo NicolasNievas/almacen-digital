@@ -4,7 +4,12 @@ import { useCallback } from "react";
 import { Moon, Sun } from "lucide-react";
 import { THEME_EVENT, useTheme } from "@/lib/theme";
 
-export default function ThemeToggle() {
+type Props = {
+  /** Permite adoptar el lenguaje del back-office sin duplicar el botón. */
+  className?: string;
+};
+
+export default function ThemeToggle({ className }: Props) {
   const theme = useTheme();
 
   const toggle = useCallback(() => {
@@ -27,9 +32,12 @@ export default function ThemeToggle() {
       onClick={toggle}
       aria-label={isDark ? "Activar modo claro" : "Activar modo oscuro"}
       title={isDark ? "Modo claro" : "Modo oscuro"}
-      className="rounded-lg border border-neutral-200 bg-white p-1.5 text-neutral-600 transition-colors hover:text-neutral-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:text-white"
+      className={
+        className ??
+        "rounded-lg border border-neutral-200 bg-white p-1.5 text-neutral-600 transition-colors hover:text-neutral-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:text-white"
+      }
     >
-      {isDark ? <Sun size={16} /> : <Moon size={16} />}
+      {isDark ? <Sun size={16} strokeWidth={1.5} /> : <Moon size={16} strokeWidth={1.5} />}
     </button>
   );
 }

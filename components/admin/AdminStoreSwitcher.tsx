@@ -28,10 +28,10 @@ export default function AdminStoreSwitcher({ stores, activeSlug }: Props) {
     const onlyStore = stores[0];
     return (
       <span
-        className="flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 py-1.5 text-sm font-medium text-neutral-700 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+        className="flex items-center gap-2 py-1 text-[12px] font-medium leading-none text-[var(--admin-ink)]"
         title="Única tienda asignada"
       >
-        <StoreIcon size={15} className="text-neutral-400 dark:text-neutral-500" />
+        <StoreIcon size={14} strokeWidth={1.5} className="text-[var(--admin-muted)]" />
         {onlyStore.name}
       </span>
     );
@@ -45,8 +45,9 @@ export default function AdminStoreSwitcher({ stores, activeSlug }: Props) {
   return (
     <label className="relative flex items-center">
       <StoreIcon
-        size={15}
-        className="pointer-events-none absolute left-2.5 text-neutral-400 dark:text-neutral-500"
+        size={14}
+        strokeWidth={1.5}
+        className="pointer-events-none absolute left-0 text-[var(--admin-muted)]"
       />
       <span className="sr-only">Tienda activa</span>
       <select
@@ -54,7 +55,7 @@ export default function AdminStoreSwitcher({ stores, activeSlug }: Props) {
         onChange={(event) => handleChange(event.target.value)}
         title="Cambiar de tienda"
         aria-label="Cambiar de tienda"
-        className="appearance-none rounded-lg border border-neutral-300 bg-white py-1.5 pl-8 pr-8 text-sm font-medium text-neutral-800 outline-none transition-colors hover:border-neutral-400 focus:border-brand dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:border-neutral-600"
+        className="w-full appearance-none rounded-none border-0 border-b border-[var(--admin-line-strong)] bg-transparent py-1.5 pl-6 pr-7 text-[12px] font-medium leading-none text-[var(--admin-ink)] outline-none transition-colors focus:border-[var(--admin-ink)]"
       >
         {stores.map((store) => (
           <option key={store.id} value={store.slug}>
@@ -63,8 +64,9 @@ export default function AdminStoreSwitcher({ stores, activeSlug }: Props) {
         ))}
       </select>
       <ChevronDown
-        size={14}
-        className="pointer-events-none absolute right-2.5 text-neutral-400 dark:text-neutral-500"
+        size={13}
+        strokeWidth={1.5}
+        className="pointer-events-none absolute right-0 text-[var(--admin-muted)]"
       />
     </label>
   );

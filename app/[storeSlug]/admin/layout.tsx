@@ -1,6 +1,8 @@
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
 import AdminHeader from "@/components/admin/AdminHeader";
+import AdminSidebar from "@/components/admin/AdminSidebar";
 import StoreThemeScope from "@/components/store/StoreThemeScope";
 import { requireAdmin } from "@/lib/auth";
 import { getStoreBySlug, listStores, listUserStores } from "@/lib/supabase/stores";
@@ -8,6 +10,23 @@ import { getStoreBySlug, listStores, listUserStores } from "@/lib/supabase/store
 // El layout lee cookies (sesión de Supabase) = dato dinámico, por lo que el
 // panel debe renderizarse a tiempo de request en lugar de prerenderizarse.
 export const dynamic = "force-dynamic";
+
+/**
+ * Título propio del panel: evita que el back-office herede el título de la
+ * landing y que los buscadores indexen rutas con sesión.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ storeSlug: string }>;
+}): Promise<Metadata> {
+  const { storeSlug } = await params;
+  const store = await getStoreBySlug(storeSlug);
+  return {
+    title: store ? `${store.name} · Panel` : "Panel de administración",
+    robots: { index: false, follow: false },
+  };
+}
 
 /**
  * Panel de una tienda concreta: `/[storeSlug]/admin/...`.
@@ -18,6 +37,9 @@ export const dynamic = "force-dynamic";
  *
  * `requireAdmin(storeSlug)` valida el vínculo en `user_stores`: un admin de
  * tienda no puede abrir el panel de otra tienda ni cambiando la URL.
+ *
+ * El shell respeta `settings.design.admin_layout`: la experiencia boutique
+ * usa sidebar fija; los tenants retail conservan su navbar superior.
  */
 export default async function StoreAdminLayout({
   children,
@@ -36,20 +58,42 @@ export default async function StoreAdminLayout({
 
   if (!store) notFound();
 
-  return (
-    <StoreThemeScope
-      store={store}
-      className="flex flex-1 flex-col bg-neutral-50 print:bg-white dark:bg-neutral-950"
-    >
-      <header className="border-b border-neutral-200 bg-white print:hidden dark:border-neutral-800 dark:bg-neutral-900">
-        <AdminHeader
-          stores={stores}
-          activeStore={store}
-          isSuperadmin={session.isSuperadmin}
-        />
-      </header>
+  const fixedSidebar = store.settings.design.admin_layout === "sidebar-fixed";
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 print:max-w-none print:px-0 print:py-0">{children}</main>
+  return (
+    <StoreThemeScope store={store} className="flex flex-1 flex-col">
+      <div
+        data-admin
+        className="flex min-h-screen flex-col bg-[var(--admin-canvas)] text-[var(--admin-ink)] print:min-h-0 print:bg-white"
+      >
+        {fixedSidebar ? (
+          <>
+            <AdminSidebar
+              stores={stores}
+              activeStore={store}
+              isSuperadmin={session.isSuperadmin}
+            />
+            <main className="flex-1 lg:pl-[280px] print:pl-0">
+              <div className="mx-auto w-full max-w-[1600px] px-5 py-8 md:px-8 lg:px-12 lg:py-12 print:max-w-none print:px-0 print:py-0">
+                {children}
+              </div>
+            </main>
+          </>
+        ) : (
+          <>
+            <header className="border-b border-neutral-200 bg-white print:hidden dark:border-neutral-800 dark:bg-neutral-900">
+              <AdminHeader
+                stores={stores}
+                activeStore={store}
+                isSuperadmin={session.isSuperadmin}
+              />
+            </header>
+            <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 print:max-w-none print:px-0 print:py-0">
+              {children}
+            </main>
+          </>
+        )}
+      </div>
     </StoreThemeScope>
   );
 }
