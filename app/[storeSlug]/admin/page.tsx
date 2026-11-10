@@ -3,6 +3,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { Boxes, DollarSign, Loader2, Receipt, RefreshCw, TrendingUp } from "lucide-react";
+import AdminPageHeader from "@/components/admin/AdminPageHeader";
+import {
+  ADMIN_ACTION_GHOST,
+  ADMIN_EMPTY_TEXT,
+  ADMIN_EMPTY_TITLE,
+  ADMIN_ERROR,
+  ADMIN_EYEBROW,
+  ADMIN_LOADING,
+} from "@/lib/admin-ui";
 import { resolveAdminStoreSlug } from "@/lib/admin-store";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import {
@@ -103,19 +112,28 @@ export default function PanelHomePage() {
 
   const cards = [
     {
+      index: "01",
       label: "Ingresos del período",
       value: formatARS(revenue),
       hint: `${webCount} web · ${posCount} POS`,
       icon: TrendingUp,
     },
     {
+      index: "02",
       label: "Pedidos completados",
       value: String(completedInRange.length),
       hint: pending > 0 ? `${pending} pendiente(s)` : "sin pendientes",
       icon: Receipt,
     },
-    { label: "Ticket promedio", value: formatARS(avgTicket), hint: "por pedido", icon: DollarSign },
     {
+      index: "03",
+      label: "Ticket promedio",
+      value: formatARS(avgTicket),
+      hint: "por pedido",
+      icon: DollarSign,
+    },
+    {
+      index: "04",
       label: "Valor de inventario",
       value: formatARS(inventoryValue),
       hint: `${products.length} productos`,
@@ -129,76 +147,93 @@ export default function PanelHomePage() {
   const salesData = useMemo(() => salesSeries(completedInRange, range), [completedInRange, range]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-neutral-900 dark:text-neutral-100">Métricas</h1>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">
-            Resumen ejecutivo de ingresos, volumen de ventas y estado general del inventario.
-          </p>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
+    <div className="space-y-8">
+      <AdminPageHeader
+        eyebrow="Resumen ejecutivo"
+        title="Métricas"
+        description="Ingresos, volumen de ventas y estado del inventario en una lectura directa."
+        actions={
           <button
             type="button"
             onClick={() => configured && void load()}
-            className="flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-sm text-neutral-600 hover:text-neutral-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:text-white"
+            className={ADMIN_ACTION_GHOST}
           >
-            <RefreshCw size={14} /> Actualizar
+            <RefreshCw size={14} strokeWidth={1.5} /> Actualizar
           </button>
+        }
+      />
+
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[var(--admin-line)] pb-5">
+        <p className={ADMIN_EYEBROW}>Período</p>
+        <div className="flex items-center gap-7">
+          {RANGES.map((option) => {
+            const active = range === option.key;
+            return (
+              <button
+                key={option.key}
+                type="button"
+                onClick={() => setRange(option.key)}
+                aria-pressed={active}
+                className={`relative pb-1 text-[10px] font-medium uppercase leading-none tracking-[0.16em] transition-colors duration-200 motion-reduce:transition-none ${
+                  active
+                    ? "text-[var(--admin-ink)] after:absolute after:inset-x-0 after:-bottom-[5px] after:h-px after:bg-[var(--admin-ink)]"
+                    : "text-[var(--admin-muted)] hover:text-[var(--admin-ink)]"
+                }`}
+              >
+                {option.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {error && <p className="rounded bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">{error}</p>}
+      {error && (
+        <p className={ADMIN_ERROR} role="alert">
+          {error}
+        </p>
+      )}
 
       {!configured ? (
-        <p className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-center text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
-          No pudimos cargar las métricas en este momento. Volvé a intentar en unos minutos.
-        </p>
+        <div className="border-y border-[var(--admin-line)] py-16">
+          <p className={ADMIN_EMPTY_TITLE}>Panel sin conexión</p>
+          <p className={`${ADMIN_EMPTY_TEXT} mt-2`}>No pudimos cargar las métricas. Volvé a intentar en unos minutos.</p>
+        </div>
       ) : loading ? (
-        <div className="flex items-center justify-center gap-2 py-20 text-neutral-500 dark:text-neutral-400">
-          <Loader2 className="h-5 w-5 animate-spin" /> Calculando métricas...
+        <div className={ADMIN_LOADING}>
+          <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.5} /> Calculando métricas
         </div>
       ) : (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {cards.map((card) => (
-              <div
-                key={card.label}
-                className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">{card.label}</span>
-                  <card.icon size={18} className="text-brand" />
+          <section aria-label="Resumen del período">
+            <div className="grid gap-px border-y border-[var(--admin-line)] bg-[var(--admin-line)] sm:grid-cols-2 xl:grid-cols-4">
+              {cards.map((card) => (
+                <div key={card.label} className="bg-[var(--admin-canvas)] p-6">
+                  <div className="flex items-start justify-between gap-4">
+                    <p className={ADMIN_EYEBROW}>{card.label}</p>
+                    <card.icon size={15} strokeWidth={1.5} className="shrink-0 text-[var(--admin-faint)]" />
+                  </div>
+                  <p className="mt-7 [font-family:var(--store-font-heading)] text-[clamp(24px,2.4vw,34px)] font-normal leading-none tracking-[-0.01em] tabular-nums text-[var(--admin-ink)]">
+                    {card.value}
+                  </p>
+                  <div className="mt-4 flex items-center justify-between gap-3">
+                    <p className="text-[11px] leading-none text-[var(--admin-muted)]">{card.hint}</p>
+                    <span className="text-[9px] tabular-nums tracking-[0.16em] text-[var(--admin-faint)]">
+                      {card.index}
+                    </span>
+                  </div>
                 </div>
-                <p className="mt-2 text-2xl font-bold text-neutral-900 dark:text-neutral-100">{card.value}</p>
-                <p className="text-xs text-neutral-400 dark:text-neutral-500">{card.hint}</p>
-              </div>
-            ))}
-          </div>
-          <div className="flex justify-start">
-            <div className="inline-flex rounded-lg border border-neutral-200 bg-white p-1 dark:border-neutral-800 dark:bg-neutral-900">
-              {RANGES.map((option) => (
-                <button
-                  key={option.key}
-                  type="button"
-                  onClick={() => setRange(option.key)}
-                  className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
-                    range === option.key
-                      ? "bg-brand-solid text-white"
-                      : "text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white"
-                  }`}
-                >
-                  {option.label}
-                </button>
               ))}
             </div>
-          </div>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <TopProductsChart data={topProductsData} />
-            <PaymentMethodsChart data={paymentData} />
-            <InventoryByCategoryChart data={inventoryData} />
-            <SalesBySourceChart data={salesData} />
-          </div>
+          </section>
+
+          <section aria-label="Gráficos del período">
+            <div className="grid grid-cols-1 gap-x-12 gap-y-10 md:grid-cols-2">
+              <TopProductsChart data={topProductsData} />
+              <PaymentMethodsChart data={paymentData} />
+              <InventoryByCategoryChart data={inventoryData} />
+              <SalesBySourceChart data={salesData} />
+            </div>
+          </section>
         </>
       )}
     </div>
