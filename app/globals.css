@@ -56,6 +56,76 @@ body {
   font-family: var(--store-font-heading, var(--font-geist-sans), Arial, Helvetica, sans-serif);
 }
 
+/*
+ * El back-office usa Playfair solo en los títulos de página y de modal
+ * (`data-display`). El resto de los encabezados —gráficos, tablas, tickets—
+ * se leen en la tipografía de cuerpo para no perder claridad.
+ */
+[data-admin] :where(h1, h2, h3, h4, h5, h6) {
+  font-family: var(--store-font-body, var(--font-geist-sans), Arial, Helvetica, sans-serif);
+}
+
+[data-admin] :where(h1, h2, h3, h4, h5, h6)[data-display] {
+  font-family: var(--store-font-heading, var(--font-geist-sans), Arial, Helvetica, sans-serif);
+}
+
+/*
+ * Tokens del back-office editorial.
+ *
+ * El panel no usa los grises de Tailwind: hereda canvas, tinta, separadores
+ * y acento del tenant (inyectados por `StoreThemeScope`) y los reescribe con
+ * un grafito cálido cuando `<html>` está en modo oscuro. Así el admin de
+ * Aura mantiene la paleta del DESIGN.md y cualquier otro tenant conserva la
+ * suya sin ramas de código.
+ */
+[data-admin] {
+  --admin-canvas: var(--store-background, #faf9f6);
+  --admin-surface: var(--store-surface, #f4f3ef);
+  --admin-sunken: color-mix(in srgb, var(--admin-surface) 72%, var(--admin-canvas));
+  --admin-ink: var(--store-ink, #1a1918);
+  --admin-muted: var(--store-ink-muted, #737373);
+  --admin-faint: color-mix(in srgb, var(--admin-muted) 90%, var(--admin-ink));
+  --admin-line: var(--store-divider, #e5e5e5);
+  --admin-line-strong: color-mix(in srgb, var(--admin-line) 62%, var(--admin-ink));
+  --admin-accent: var(--store-primary, #fad4d8);
+  --admin-accent-hover: var(--store-primary-hover, #f5c2c7);
+  --admin-on-accent: var(--store-on-primary, #1a1918);
+  --admin-positive: #3d6b52;
+  --admin-warning: #8a641f;
+  --admin-danger: #a03a3a;
+  --admin-on-danger: #faf9f6;
+  color-scheme: light;
+}
+
+html.dark [data-admin] {
+  --admin-canvas: #121210;
+  --admin-surface: #1a1a17;
+  --admin-sunken: #171715;
+  --admin-ink: #f2efe9;
+  --admin-muted: #a8a49c;
+  --admin-faint: #8a867e;
+  --admin-line: #2c2b28;
+  --admin-line-strong: #3a3833;
+  --admin-accent: color-mix(in srgb, var(--store-primary, #fad4d8) 70%, #121210);
+  --admin-accent-hover: color-mix(in srgb, var(--store-primary, #fad4d8) 84%, #121210);
+  --admin-on-accent: #141311;
+  --admin-positive: #8fb99b;
+  --admin-warning: #d6b06a;
+  --admin-danger: #e08f8f;
+  --admin-on-danger: #141311;
+  color-scheme: dark;
+}
+
+@media print {
+  [data-admin] {
+    --admin-canvas: #ffffff;
+    --admin-surface: #f4f4f4;
+    --admin-ink: #111111;
+    --admin-muted: #555555;
+    --admin-line: #d4d4d4;
+  }
+}
+
 @media print {
   .dark,
   :root {
