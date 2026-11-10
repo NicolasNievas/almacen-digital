@@ -107,8 +107,9 @@ function formatDate(iso: string): string {
 
 /**
  * Bloque de logística del pedido expandido (cliente, entrega, pago, notas).
- * Vive en la columna izquierda del sub-panel y no compite con la tabla: cada
- * dato lleva su etiqueta arriba y un icono fino de Lucide a la izquierda.
+ * Vive en la columna izquierda del sub-panel y no compite con la tabla: la
+ * etiqueta va en caption con aire y el dato en cuerpo, para que el nombre y
+ * la dirección se lean de un golpe. El icono fino de Lucide ancla cada fila.
  */
 function OrderPanelMeta({
   icon: Icon,
@@ -122,14 +123,16 @@ function OrderPanelMeta({
   return (
     <div className="flex items-start gap-3">
       <Icon
-        size={14}
+        size={15}
         strokeWidth={1.5}
         aria-hidden
-        className="mt-[3px] shrink-0 text-[var(--admin-faint)]"
+        className="mt-[3px] shrink-0 text-[var(--admin-muted)]"
       />
-      <div className="min-w-0 space-y-1">
-        <p className={ADMIN_EYEBROW}>{label}</p>
-        <div className="text-[13px] leading-5 text-[var(--admin-ink)]">{children}</div>
+      <div className="min-w-0 space-y-1.5">
+        <p className="text-xs font-medium uppercase leading-none tracking-[0.16em] text-[var(--admin-muted)]">
+          {label}
+        </p>
+        <div className="text-sm leading-5 text-[var(--admin-ink)]">{children}</div>
       </div>
     </div>
   );
@@ -500,16 +503,16 @@ export default function PedidosPage() {
                       <div role="row" className="border-b border-[var(--admin-line)]">
                         <div
                           role="cell"
-                          className="border-l-2 border-l-[var(--store-primary,var(--admin-accent))] py-6"
+                          className="border-l-[6px] border-l-[var(--store-primary,var(--admin-accent))] py-6"
                         >
                           <div className="grid gap-8 px-8 lg:grid-cols-12">
-                            <div className="flex flex-col gap-5 lg:col-span-4">
+                            <div className="flex flex-col gap-5 lg:col-span-4 lg:border-r lg:border-[var(--admin-line)] lg:pr-8">
                               <OrderPanelMeta icon={UserRound} label="Cliente">
                                 {order.customer_name ? (
                                   <>
                                     <span className="block truncate">{order.customer_name}</span>
                                     {order.customer_phone && (
-                                      <span className="block text-[12px] tabular-nums text-[var(--admin-muted)]">
+                                      <span className="block text-[13px] tabular-nums text-[var(--admin-muted)]">
                                         {order.customer_phone}
                                       </span>
                                     )}
@@ -525,14 +528,14 @@ export default function PedidosPage() {
                                 ) : order.fulfillment_type === "DELIVERY" ? (
                                   <>
                                     <span className="block">Delivery</span>
-                                    <span className="block text-[12px] leading-5 text-[var(--admin-muted)]">
+                                    <span className="block text-[13px] leading-5 text-[var(--admin-muted)]">
                                       {order.delivery_address ?? "Dirección a coordinar"}
                                     </span>
                                   </>
                                 ) : (
                                   <>
                                     <span className="block">Retiro en local</span>
-                                    <span className="block text-[12px] tabular-nums text-[var(--admin-muted)]">
+                                    <span className="block text-[13px] tabular-nums text-[var(--admin-muted)]">
                                       {order.pickup_time?.slice(0, 5) ?? "Horario a coordinar"}
                                     </span>
                                   </>
@@ -547,7 +550,7 @@ export default function PedidosPage() {
 
                               {order.notes && (
                                 <OrderPanelMeta icon={StickyNote} label="Notas">
-                                  <span className="block text-[12px] leading-5 text-[var(--admin-muted)]">
+                                  <span className="block text-[13px] leading-5 text-[var(--admin-muted)]">
                                     {order.notes}
                                   </span>
                                 </OrderPanelMeta>
