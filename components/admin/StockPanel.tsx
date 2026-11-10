@@ -13,10 +13,14 @@ import { formatARS } from "@/lib/pricing";
 const LOW_STOCK = 5;
 
 /**
- * El stepper vive al final de su track y el precio arranca al inicio del
- * siguiente: la distancia entre ambos es solo el gap, no media pantalla.
+ * Una sola plantilla en el wrapper de la tabla: cabecera y filas la heredan.
+ * Producto ya no absorbe todo el sobrante (`1fr` puro): comparte ancho con
+ * Stock y Precio, así el stepper y el importe quedan cerca del nombre en vez
+ * de quedar clavados al borde derecho. El stepper cierra su track y el precio
+ * arranca al inicio del siguiente: entre ambos solo hay gap.
  */
-const STOCK_GRID = "grid-cols-[minmax(0,1fr)_150px_160px_96px]";
+const STOCK_TABLE =
+  "w-full min-w-[720px] [--admin-table-cols:minmax(0,1.3fr)_minmax(136px,0.9fr)_minmax(150px,1fr)_96px]";
 
 type Props = {
   initial: Product[];
@@ -65,9 +69,9 @@ export default function StockPanel({ initial, onSave }: Props) {
       </div>
 
       <div className="overflow-x-auto">
-        <div role="table" aria-label="Stock" className="w-full min-w-[660px]">
+        <div role="table" aria-label="Stock" className={STOCK_TABLE}>
           <div role="rowgroup">
-            <div role="row" className={`${ADMIN_GRID_HEAD} ${STOCK_GRID}`}>
+            <div role="row" className={ADMIN_GRID_HEAD}>
               <div role="columnheader" className={ADMIN_CELL_HEAD}>
                 Producto
               </div>
@@ -86,7 +90,7 @@ export default function StockPanel({ initial, onSave }: Props) {
             {filtered.map((p) => {
               const low = p.stock < LOW_STOCK;
               return (
-                <div key={p.id} role="row" className={`${ADMIN_GRID_ROW} ${STOCK_GRID}`}>
+                <div key={p.id} role="row" className={ADMIN_GRID_ROW}>
                   <div role="cell" className="min-w-0 py-3">
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <span className="text-sm leading-5 text-[var(--admin-ink)]">{p.name}</span>

@@ -34,15 +34,17 @@ import { formatARS } from "@/lib/pricing";
 import type { Category, Product } from "@/lib/types";
 
 /**
- * Plantillas de columnas por breakpoint. Una celda `hidden` sale del flujo y
- * el autoplacement ocupa el track siguiente, por eso cada plantilla declara
- * tantas columnas como celdas visibles:
+ * Plantilla de columnas por breakpoint, declarada una sola vez en el wrapper
+ * de la tabla. Cabecera y filas leen la misma variable, así que no pueden
+ * desalinearse. Cada breakpoint declara tantas columnas como celdas visibles
+ * (una celda `hidden` sale del flujo y el autoplacement ocupa el track
+ * siguiente):
  * base → Producto · Precio · Estado · Acciones
  * sm   → + Stock
  * xl   → + Categoría
  */
-const PRODUCT_GRID =
-  "grid-cols-[minmax(0,1fr)_104px_84px_84px] sm:grid-cols-[minmax(0,1fr)_110px_72px_88px_84px] xl:grid-cols-[minmax(0,1fr)_150px_120px_80px_100px_92px]";
+const PRODUCT_TABLE =
+  "w-full min-w-[620px] [--admin-table-cols:minmax(0,1fr)_104px_88px_88px] sm:[--admin-table-cols:minmax(0,1fr)_110px_76px_88px_88px] xl:[--admin-table-cols:minmax(0,1.1fr)_minmax(0,1fr)_112px_80px_96px_88px]";
 
 export default function ProductosPage() {
   const configured = isSupabaseConfigured();
@@ -221,9 +223,9 @@ export default function ProductosPage() {
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <div role="table" aria-label="Productos" className="w-full min-w-[620px]">
+          <div role="table" aria-label="Productos" className={PRODUCT_TABLE}>
             <div role="rowgroup">
-              <div role="row" className={`${ADMIN_GRID_HEAD} ${PRODUCT_GRID}`}>
+              <div role="row" className={ADMIN_GRID_HEAD}>
                 <div role="columnheader" className={ADMIN_CELL_HEAD}>
                   Producto
                 </div>
@@ -248,7 +250,7 @@ export default function ProductosPage() {
               {filtered.map((product) => {
                 const busy = busyId === product.id;
                 return (
-                  <div key={product.id} role="row" className={`${ADMIN_GRID_ROW} ${PRODUCT_GRID}`}>
+                  <div key={product.id} role="row" className={ADMIN_GRID_ROW}>
                     <div role="cell" className="min-w-0 py-4">
                       <div className="flex items-center gap-3">
                         <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden bg-[var(--admin-surface)]">

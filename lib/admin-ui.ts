@@ -38,15 +38,24 @@ export const ADMIN_TABLE_HEAD =
   "border-b border-[var(--admin-line)] pb-3 text-left text-[10px] font-medium uppercase tracking-[0.16em] text-[var(--admin-faint)]";
 
 /**
- * Grillas de tabla: cabecera y filas comparten exactamente la misma
- * plantilla `grid-cols-[...]`, así cada dato cae en la vertical de su título.
- * Sin `table-layout` ni anchos calculados por el contenido.
+ * Grillas de tabla.
+ *
+ * La plantilla vive una sola vez, en el contenedor de la tabla, mediante
+ * `--admin-table-cols` (y opcionalmente `--admin-grid-gap`). Cabecera, fila
+ * principal y filas de detalle consumen esa misma variable, así que no pueden
+ * divergir: cada dato cae siempre en la vertical de su título.
+ *
+ * Uso en el wrapper:
+ *   className="[--admin-table-cols:106px_66px_minmax(0,1fr)]"
  */
+export const ADMIN_TABLE_GRID =
+  "grid grid-cols-[var(--admin-table-cols)] gap-x-[var(--admin-grid-gap,1rem)]";
+
 export const ADMIN_GRID_HEAD =
-  "grid items-end gap-x-4 border-b border-[var(--admin-line)] pb-3";
+  `${ADMIN_TABLE_GRID} items-end border-b border-[var(--admin-line)] pb-3`;
 
 export const ADMIN_GRID_ROW =
-  "grid items-center gap-x-4 border-b border-[var(--admin-line)] transition-colors duration-200 hover:bg-[var(--admin-surface)] motion-reduce:transition-none";
+  `${ADMIN_TABLE_GRID} items-center border-b border-[var(--admin-line)] transition-colors duration-200 hover:bg-[var(--admin-surface)] motion-reduce:transition-none`;
 
 export const ADMIN_CELL_HEAD =
   "text-[10px] font-medium uppercase leading-none tracking-[0.16em] text-[var(--admin-faint)]";

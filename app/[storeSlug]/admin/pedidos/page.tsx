@@ -26,6 +26,7 @@ import {
   ADMIN_GRID_HEAD,
   ADMIN_GRID_ROW,
   ADMIN_LOADING,
+  ADMIN_TABLE_GRID,
 } from "@/lib/admin-ui";
 import { resolveAdminStoreSlug } from "@/lib/admin-store";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
@@ -63,11 +64,12 @@ const PAGE_SIZE = 10;
 
 /**
  * Una sola plantilla para cabecera, fila principal y fila expandida.
- * Total, Estado y Acciones tienen tracks fijos a la derecha; el subtotal de
- * cada ítem hereda el track de Total y queda en la misma vertical.
+ * Total (5) y Estado (6) tienen tracks fijos y se centran: dejan de chocar
+ * entre sí. Acciones (7) se ancla a la derecha. El subtotal de cada ítem usa
+ * el track de Total, por lo que queda en la misma vertical.
  */
-const ORDER_GRID =
-  "grid-cols-[106px_66px_minmax(0,1fr)_minmax(0,1fr)_98px_104px_246px]";
+const ORDER_TABLE =
+  "w-full min-w-[900px] [--admin-table-cols:104px_62px_minmax(0,1fr)_minmax(0,1fr)_108px_108px_236px] [--admin-grid-gap:0.75rem]";
 
 const MINI_PRIMARY =
   "inline-flex items-center gap-1.5 whitespace-nowrap rounded-md bg-[var(--admin-accent)] px-2.5 py-1.5 text-[10px] font-medium uppercase leading-none tracking-[0.1em] text-[var(--admin-on-accent)] transition-colors duration-200 hover:bg-[var(--admin-accent-hover)] disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none";
@@ -312,9 +314,9 @@ export default function PedidosPage() {
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <div role="table" aria-label="Pedidos" className="w-full min-w-[900px]">
+          <div role="table" aria-label="Pedidos" className={ORDER_TABLE}>
             <div role="rowgroup">
-              <div role="row" className={`${ADMIN_GRID_HEAD} ${ORDER_GRID}`}>
+              <div role="row" className={ADMIN_GRID_HEAD}>
                 <div role="columnheader" className={ADMIN_CELL_HEAD}>
                   Fecha
                 </div>
@@ -327,10 +329,10 @@ export default function PedidosPage() {
                 <div role="columnheader" className={ADMIN_CELL_HEAD}>
                   Entrega
                 </div>
-                <div role="columnheader" className={`${ADMIN_CELL_HEAD} text-right`}>
+                <div role="columnheader" className={`${ADMIN_CELL_HEAD} text-center`}>
                   Total
                 </div>
-                <div role="columnheader" className={ADMIN_CELL_HEAD}>
+                <div role="columnheader" className={`${ADMIN_CELL_HEAD} text-center`}>
                   Estado
                 </div>
                 <div role="columnheader" className={`${ADMIN_CELL_HEAD} text-right`}>
@@ -344,7 +346,7 @@ export default function PedidosPage() {
                 const busy = busyId === order.id;
                 return (
                   <Fragment key={order.id}>
-                    <div role="row" className={`${ADMIN_GRID_ROW} ${ORDER_GRID}`}>
+                    <div role="row" className={ADMIN_GRID_ROW}>
                       <div
                         role="cell"
                         className="whitespace-nowrap py-4 text-[12px] tabular-nums text-[var(--admin-muted)]"
@@ -381,10 +383,10 @@ export default function PedidosPage() {
                           </span>
                         )}
                       </div>
-                      <div role="cell" className="py-4 text-right text-[13px] tabular-nums text-[var(--admin-ink)]">
+                      <div role="cell" className="py-4 text-center text-[13px] tabular-nums text-[var(--admin-ink)]">
                         {formatARS(order.total)}
                       </div>
-                      <div role="cell" className="py-4">
+                      <div role="cell" className="flex justify-center py-4">
                         <span
                           className={`inline-flex items-center gap-2 text-[10px] font-medium uppercase leading-none tracking-[0.12em] ${
                             STATUS_TEXT[order.status] ?? "text-[var(--admin-muted)]"
@@ -487,7 +489,7 @@ export default function PedidosPage() {
                               return (
                                 <div
                                   key={`${order.id}-${index}`}
-                                  className={`grid items-center gap-x-4 py-3 ${ORDER_GRID}`}
+                                  className={`${ADMIN_TABLE_GRID} items-center py-3`}
                                 >
                                   <div className="col-span-4 flex min-w-0 items-center gap-3">
                                     <div className="relative h-11 w-11 shrink-0 overflow-hidden bg-[var(--admin-canvas)]">
@@ -537,6 +539,7 @@ export default function PedidosPage() {
                         </div>
                       </div>
                     )}
+
                   </Fragment>
                 );
               })}
