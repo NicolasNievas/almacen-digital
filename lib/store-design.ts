@@ -123,7 +123,7 @@ export function designToCssVars(design: StoreDesign): CSSProperties {
   const onPrimary = inkOn(primary);
 
   const surface = mix(background, ink, darkCanvas ? 0.08 : 0.045);
-  const muted = mix(background, ink, 0.62);
+  const muted = mix(background, ink, 0.66);
   const divider = mix(background, ink, darkCanvas ? 0.24 : 0.12);
 
   return {
