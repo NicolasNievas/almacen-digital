@@ -18,13 +18,14 @@ import {
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
 import {
   ADMIN_ACTION_GHOST,
+  ADMIN_CELL_HEAD,
   ADMIN_EMPTY_TEXT,
   ADMIN_EMPTY_TITLE,
   ADMIN_ERROR,
   ADMIN_EYEBROW,
+  ADMIN_GRID_HEAD,
+  ADMIN_GRID_ROW,
   ADMIN_LOADING,
-  ADMIN_ROW,
-  ADMIN_TABLE_HEAD,
 } from "@/lib/admin-ui";
 import { resolveAdminStoreSlug } from "@/lib/admin-store";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
@@ -59,6 +60,14 @@ const FILTERS = [
 ] as const;
 
 const PAGE_SIZE = 10;
+
+/**
+ * Una sola plantilla para cabecera, fila principal y fila expandida.
+ * Total, Estado y Acciones tienen tracks fijos a la derecha; el subtotal de
+ * cada ítem hereda el track de Total y queda en la misma vertical.
+ */
+const ORDER_GRID =
+  "grid-cols-[106px_66px_minmax(0,1fr)_minmax(0,1fr)_98px_104px_246px]";
 
 const MINI_PRIMARY =
   "inline-flex items-center gap-1.5 whitespace-nowrap rounded-md bg-[var(--admin-accent)] px-2.5 py-1.5 text-[10px] font-medium uppercase leading-none tracking-[0.1em] text-[var(--admin-on-accent)] transition-colors duration-200 hover:bg-[var(--admin-accent-hover)] disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none";
@@ -303,49 +312,65 @@ export default function PedidosPage() {
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[860px] border-collapse">
-            <thead>
-              <tr>
-                <th className={`${ADMIN_TABLE_HEAD} pl-0 pr-4`}>Fecha</th>
-                <th className={`${ADMIN_TABLE_HEAD} pr-4`}>Origen</th>
-                <th className={`${ADMIN_TABLE_HEAD} pr-4`}>Cliente</th>
-                <th className={`${ADMIN_TABLE_HEAD} pr-4`}>Entrega</th>
-                <th className={`${ADMIN_TABLE_HEAD} hidden pr-4 2xl:table-cell`}>Pago</th>
-                <th className={`${ADMIN_TABLE_HEAD} pr-4 text-right`}>Total</th>
-                <th className={`${ADMIN_TABLE_HEAD} pr-4`}>Estado</th>
-                <th className={`${ADMIN_TABLE_HEAD} pr-0 text-right`}>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
+          <div role="table" aria-label="Pedidos" className="w-full min-w-[900px]">
+            <div role="rowgroup">
+              <div role="row" className={`${ADMIN_GRID_HEAD} ${ORDER_GRID}`}>
+                <div role="columnheader" className={ADMIN_CELL_HEAD}>
+                  Fecha
+                </div>
+                <div role="columnheader" className={ADMIN_CELL_HEAD}>
+                  Origen
+                </div>
+                <div role="columnheader" className={ADMIN_CELL_HEAD}>
+                  Cliente
+                </div>
+                <div role="columnheader" className={ADMIN_CELL_HEAD}>
+                  Entrega
+                </div>
+                <div role="columnheader" className={`${ADMIN_CELL_HEAD} text-right`}>
+                  Total
+                </div>
+                <div role="columnheader" className={ADMIN_CELL_HEAD}>
+                  Estado
+                </div>
+                <div role="columnheader" className={`${ADMIN_CELL_HEAD} text-right`}>
+                  Acciones
+                </div>
+              </div>
+            </div>
+            <div role="rowgroup">
               {pageOrders.map((order) => {
                 const open = expanded === order.id;
                 const busy = busyId === order.id;
                 return (
                   <Fragment key={order.id}>
-                    <tr className={ADMIN_ROW}>
-                      <td className="whitespace-nowrap py-4 pl-0 pr-4 text-[12px] tabular-nums text-[var(--admin-muted)]">
+                    <div role="row" className={`${ADMIN_GRID_ROW} ${ORDER_GRID}`}>
+                      <div
+                        role="cell"
+                        className="whitespace-nowrap py-4 text-[12px] tabular-nums text-[var(--admin-muted)]"
+                      >
                         {formatDate(order.created_at)}
-                      </td>
-                      <td className="py-4 pr-4">
+                      </div>
+                      <div role="cell" className="py-4">
                         <span className="text-[10px] font-medium uppercase leading-none tracking-[0.14em] text-[var(--admin-muted)]">
                           {order.source}
                         </span>
-                      </td>
-                      <td className="py-4 pr-4">
-                        <span className="block text-[13px] leading-5 text-[var(--admin-ink)]">
+                      </div>
+                      <div role="cell" className="min-w-0 py-4">
+                        <span className="block truncate text-[13px] leading-5 text-[var(--admin-ink)]">
                           {order.customer_name ?? "—"}
                         </span>
                         {order.customer_phone && (
-                          <span className="block text-[11px] leading-4 text-[var(--admin-faint)]">
+                          <span className="block truncate text-[11px] leading-4 text-[var(--admin-faint)]">
                             {order.customer_phone}
                           </span>
                         )}
-                      </td>
-                      <td className="py-4 pr-4 text-[12px] leading-5 text-[var(--admin-muted)]">
+                      </div>
+                      <div role="cell" className="min-w-0 py-4 text-[12px] leading-5 text-[var(--admin-muted)]">
                         {order.source === "POS" ? (
                           <span>Venta presencial</span>
                         ) : order.fulfillment_type === "DELIVERY" ? (
-                          <span className="block max-w-[220px]">
+                          <span className="block">
                             <span className="text-[var(--admin-ink)]">Delivery</span>
                             <span className="block truncate text-[11px]">{order.delivery_address ?? "—"}</span>
                           </span>
@@ -355,14 +380,11 @@ export default function PedidosPage() {
                             {order.pickup_time?.slice(0, 5) ?? "—"}
                           </span>
                         )}
-                      </td>
-                      <td className="hidden py-4 pr-4 text-[12px] text-[var(--admin-muted)] 2xl:table-cell">
-                        {order.payment_method ?? "—"}
-                      </td>
-                      <td className="py-4 pr-4 text-right text-[13px] tabular-nums text-[var(--admin-ink)]">
+                      </div>
+                      <div role="cell" className="py-4 text-right text-[13px] tabular-nums text-[var(--admin-ink)]">
                         {formatARS(order.total)}
-                      </td>
-                      <td className="py-4 pr-4">
+                      </div>
+                      <div role="cell" className="py-4">
                         <span
                           className={`inline-flex items-center gap-2 text-[10px] font-medium uppercase leading-none tracking-[0.12em] ${
                             STATUS_TEXT[order.status] ?? "text-[var(--admin-muted)]"
@@ -375,67 +397,68 @@ export default function PedidosPage() {
                           />
                           {STATUS_LABELS[order.status] ?? order.status}
                         </span>
-                      </td>
-                      <td className="py-4 pl-4 pr-0">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => setExpanded(open ? null : order.id)}
-                            aria-expanded={open}
-                            className="inline-flex items-center gap-1 whitespace-nowrap text-[10px] font-medium uppercase leading-none tracking-[0.1em] text-[var(--admin-muted)] transition-colors hover:text-[var(--admin-ink)]"
-                          >
-                            {order.items.length} {order.items.length === 1 ? "ítem" : "ítems"}
-                            <ChevronDown
-                              size={12}
-                              strokeWidth={1.5}
-                              className={`transition-transform duration-200 motion-reduce:transition-none ${open ? "rotate-180" : ""}`}
-                            />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => printOrderTicket(order, productsByName)}
-                            className={MINI_ICON}
-                            aria-label="Imprimir ticket"
-                            title="Imprimir ticket"
-                          >
-                            <Printer size={14} strokeWidth={1.5} />
-                          </button>
-                          {order.status === "PENDING" && (
-                            <>
-                              <button
-                                type="button"
-                                disabled={busy}
-                                onClick={() => void processOrder(order.id, "confirm_order")}
-                                className={MINI_PRIMARY}
-                              >
-                                <Check size={12} strokeWidth={1.5} /> Confirmar
-                              </button>
-                              <button
-                                type="button"
-                                disabled={busy}
-                                onClick={() => void processOrder(order.id, "cancel_order")}
-                                className={`${MINI_GHOST} px-2 hover:border-[var(--admin-danger)] hover:text-[var(--admin-danger)]`}
-                                aria-label={`Cancelar pedido de ${order.customer_name ?? "cliente"}`}
-                                title="Cancelar pedido"
-                              >
-                                <X size={13} strokeWidth={1.5} />
-                              </button>
-                            </>
-                          )}
-                          {busy && (
-                            <Loader2
-                              size={13}
-                              strokeWidth={1.5}
-                              className="animate-spin text-[var(--admin-faint)]"
-                            />
-                          )}
-                        </div>
-                      </td>
-                    </tr>
+                      </div>
+                      <div role="cell" className="flex items-center justify-end gap-1.5 py-4">
+                        <button
+                          type="button"
+                          onClick={() => setExpanded(open ? null : order.id)}
+                          aria-expanded={open}
+                          className="inline-flex items-center gap-1 whitespace-nowrap text-[10px] font-medium uppercase leading-none tracking-[0.1em] text-[var(--admin-muted)] transition-colors hover:text-[var(--admin-ink)]"
+                        >
+                          {order.items.length} {order.items.length === 1 ? "ítem" : "ítems"}
+                          <ChevronDown
+                            size={12}
+                            strokeWidth={1.5}
+                            className={`transition-transform duration-200 motion-reduce:transition-none ${open ? "rotate-180" : ""}`}
+                          />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => printOrderTicket(order, productsByName)}
+                          className={MINI_ICON}
+                          aria-label="Imprimir ticket"
+                          title="Imprimir ticket"
+                        >
+                          <Printer size={14} strokeWidth={1.5} />
+                        </button>
+                        {order.status === "PENDING" && (
+                          <>
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => void processOrder(order.id, "confirm_order")}
+                              className={MINI_PRIMARY}
+                            >
+                              <Check size={12} strokeWidth={1.5} /> Confirmar
+                            </button>
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => void processOrder(order.id, "cancel_order")}
+                              className={`${MINI_GHOST} px-2 hover:border-[var(--admin-danger)] hover:text-[var(--admin-danger)]`}
+                              aria-label={`Cancelar pedido de ${order.customer_name ?? "cliente"}`}
+                              title="Cancelar pedido"
+                            >
+                              <X size={13} strokeWidth={1.5} />
+                            </button>
+                          </>
+                        )}
+                        {busy && (
+                          <Loader2
+                            size={13}
+                            strokeWidth={1.5}
+                            className="animate-spin text-[var(--admin-faint)]"
+                          />
+                        )}
+                      </div>
+                    </div>
 
                     {open && (
-                      <tr className="border-b border-[var(--admin-line)] bg-[var(--admin-surface)]">
-                        <td colSpan={8} className="px-0 py-5">
+                      <div
+                        role="row"
+                        className="border-b border-[var(--admin-line)] bg-[var(--admin-surface)]"
+                      >
+                        <div role="cell" className="py-5">
                           {(order.notes || order.delivery_address || order.payment_method) && (
                             <div className="mb-4 space-y-1 border-b border-[var(--admin-line)] pb-4 text-[12px] leading-5 text-[var(--admin-muted)]">
                               {order.delivery_address && (
@@ -457,16 +480,16 @@ export default function PedidosPage() {
                               )}
                             </div>
                           )}
-                          <ul className="divide-y divide-[var(--admin-line)]">
+                          <div className="divide-y divide-[var(--admin-line)]">
                             {order.items.map((item, index) => {
                               const unit =
                                 item.quantity > 0 ? item.line_total / item.quantity : item.line_total;
                               return (
-                                <li
+                                <div
                                   key={`${order.id}-${index}`}
-                                  className="flex items-center justify-between gap-4 py-3"
+                                  className={`grid items-center gap-x-4 py-3 ${ORDER_GRID}`}
                                 >
-                                  <div className="flex min-w-0 items-center gap-3">
+                                  <div className="col-span-4 flex min-w-0 items-center gap-3">
                                     <div className="relative h-11 w-11 shrink-0 overflow-hidden bg-[var(--admin-canvas)]">
                                       {item.image_url ? (
                                         <Image
@@ -499,26 +522,26 @@ export default function PedidosPage() {
                                       )}
                                     </div>
                                   </div>
-                                  <div className="flex shrink-0 items-center gap-5">
-                                    <span className="text-[11px] tabular-nums text-[var(--admin-muted)]">
-                                      {item.quantity} un. × {formatARS(unit)}
-                                    </span>
+                                  <div className="col-start-5 flex flex-col items-end text-right">
                                     <span className="text-[13px] tabular-nums text-[var(--admin-ink)]">
                                       {formatARS(item.line_total)}
                                     </span>
+                                    <span className="text-[10px] tabular-nums text-[var(--admin-muted)]">
+                                      {item.quantity} un. × {formatARS(unit)}
+                                    </span>
                                   </div>
-                                </li>
+                                </div>
                               );
                             })}
-                          </ul>
-                        </td>
-                      </tr>
+                          </div>
+                        </div>
+                      </div>
                     )}
                   </Fragment>
                 );
               })}
-            </tbody>
-          </table>
+            </div>
+          </div>
         </div>
       )}
 

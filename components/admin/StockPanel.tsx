@@ -2,14 +2,21 @@
 import { useState } from "react";
 import { AlertTriangle, Minus, Plus, Search } from "lucide-react";
 import {
+  ADMIN_CELL_HEAD,
   ADMIN_EYEBROW,
-  ADMIN_ROW,
-  ADMIN_TABLE_HEAD,
+  ADMIN_GRID_HEAD,
+  ADMIN_GRID_ROW,
 } from "@/lib/admin-ui";
 import type { Product } from "@/lib/types";
 import { formatARS } from "@/lib/pricing";
 
 const LOW_STOCK = 5;
+
+/**
+ * El stepper vive al final de su track y el precio arranca al inicio del
+ * siguiente: la distancia entre ambos es solo el gap, no media pantalla.
+ */
+const STOCK_GRID = "grid-cols-[minmax(0,1fr)_150px_160px_96px]";
 
 type Props = {
   initial: Product[];
@@ -58,21 +65,29 @@ export default function StockPanel({ initial, onSave }: Props) {
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[660px] border-collapse">
-          <thead>
-            <tr>
-              <th className={`${ADMIN_TABLE_HEAD} pl-0 pr-5`}>Producto</th>
-              <th className={`${ADMIN_TABLE_HEAD} pr-5`}>Stock</th>
-              <th className={`${ADMIN_TABLE_HEAD} pr-5`}>Precio unitario</th>
-              <th className={`${ADMIN_TABLE_HEAD} pr-0 text-right`}>Venta</th>
-            </tr>
-          </thead>
-          <tbody>
+        <div role="table" aria-label="Stock" className="w-full min-w-[660px]">
+          <div role="rowgroup">
+            <div role="row" className={`${ADMIN_GRID_HEAD} ${STOCK_GRID}`}>
+              <div role="columnheader" className={ADMIN_CELL_HEAD}>
+                Producto
+              </div>
+              <div role="columnheader" className={`${ADMIN_CELL_HEAD} text-right`}>
+                Stock
+              </div>
+              <div role="columnheader" className={ADMIN_CELL_HEAD}>
+                Precio unitario
+              </div>
+              <div role="columnheader" className={`${ADMIN_CELL_HEAD} text-right`}>
+                Venta
+              </div>
+            </div>
+          </div>
+          <div role="rowgroup">
             {filtered.map((p) => {
               const low = p.stock < LOW_STOCK;
               return (
-                <tr key={p.id} className={ADMIN_ROW}>
-                  <td className="py-3 pl-0 pr-5">
+                <div key={p.id} role="row" className={`${ADMIN_GRID_ROW} ${STOCK_GRID}`}>
+                  <div role="cell" className="min-w-0 py-3">
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <span className="text-sm leading-5 text-[var(--admin-ink)]">{p.name}</span>
                       {low && (
@@ -82,8 +97,8 @@ export default function StockPanel({ initial, onSave }: Props) {
                         </span>
                       )}
                     </div>
-                  </td>
-                  <td className="py-3 pr-5">
+                  </div>
+                  <div role="cell" className="flex justify-end py-3">
                     <div className="inline-flex items-center border-b border-[var(--admin-line)]">
                       <button
                         type="button"
@@ -112,8 +127,8 @@ export default function StockPanel({ initial, onSave }: Props) {
                         <Plus size={13} strokeWidth={1.5} />
                       </button>
                     </div>
-                  </td>
-                  <td className="py-3 pr-5">
+                  </div>
+                  <div role="cell" className="py-3">
                     <div className="flex flex-col gap-0.5">
                       <input
                         type="number"
@@ -130,8 +145,8 @@ export default function StockPanel({ initial, onSave }: Props) {
                         {formatARS(p.unit_price)}
                       </span>
                     </div>
-                  </td>
-                  <td className="py-3 pr-0 text-right">
+                  </div>
+                  <div role="cell" className="flex justify-end py-3">
                     <button
                       type="button"
                       role="switch"
@@ -149,19 +164,17 @@ export default function StockPanel({ initial, onSave }: Props) {
                       />
                       {p.active ? "Activo" : "Pausado"}
                     </button>
-                  </td>
-                </tr>
+                  </div>
+                </div>
               );
             })}
             {filtered.length === 0 && (
-              <tr>
-                <td colSpan={4} className="border-b border-[var(--admin-line)] py-10 text-center text-[11px] uppercase tracking-[0.14em] text-[var(--admin-faint)]">
-                  Sin coincidencias
-                </td>
-              </tr>
+              <div role="row" className="border-b border-[var(--admin-line)] py-10 text-center text-[11px] uppercase tracking-[0.14em] text-[var(--admin-faint)]">
+                <div role="cell">Sin coincidencias</div>
+              </div>
             )}
-          </tbody>
-        </table>
+          </div>
+        </div>
       </div>
     </div>
   );

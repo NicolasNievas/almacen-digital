@@ -10,15 +10,16 @@ import AdminPageHeader from "@/components/admin/AdminPageHeader";
 import {
   ADMIN_ACTION_GHOST,
   ADMIN_ACTION_PRIMARY,
+  ADMIN_CELL_HEAD,
   ADMIN_EMPTY_TEXT,
   ADMIN_EMPTY_TITLE,
   ADMIN_ERROR,
   ADMIN_EYEBROW,
+  ADMIN_GRID_HEAD,
+  ADMIN_GRID_ROW,
   ADMIN_ICON_BUTTON,
   ADMIN_INPUT,
   ADMIN_LOADING,
-  ADMIN_ROW,
-  ADMIN_TABLE_HEAD,
 } from "@/lib/admin-ui";
 import { resolveAdminStoreSlug } from "@/lib/admin-store";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
@@ -31,6 +32,17 @@ import {
 } from "@/lib/supabase/queries";
 import { formatARS } from "@/lib/pricing";
 import type { Category, Product } from "@/lib/types";
+
+/**
+ * Plantillas de columnas por breakpoint. Una celda `hidden` sale del flujo y
+ * el autoplacement ocupa el track siguiente, por eso cada plantilla declara
+ * tantas columnas como celdas visibles:
+ * base → Producto · Precio · Estado · Acciones
+ * sm   → + Stock
+ * xl   → + Categoría
+ */
+const PRODUCT_GRID =
+  "grid-cols-[minmax(0,1fr)_104px_84px_84px] sm:grid-cols-[minmax(0,1fr)_110px_72px_88px_84px] xl:grid-cols-[minmax(0,1fr)_150px_120px_80px_100px_92px]";
 
 export default function ProductosPage() {
   const configured = isSupabaseConfigured();
@@ -209,23 +221,35 @@ export default function ProductosPage() {
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[620px] border-collapse">
-            <thead>
-              <tr>
-                <th className={`${ADMIN_TABLE_HEAD} pl-0`}>Producto</th>
-                <th className={`${ADMIN_TABLE_HEAD} hidden md:table-cell`}>Categoría</th>
-                <th className={`${ADMIN_TABLE_HEAD} text-right`}>Precio</th>
-                <th className={`${ADMIN_TABLE_HEAD} hidden pr-4 text-right sm:table-cell`}>Stock</th>
-                <th className={`${ADMIN_TABLE_HEAD} px-4 text-center`}>Estado</th>
-                <th className={`${ADMIN_TABLE_HEAD} pr-0 text-right`}>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
+          <div role="table" aria-label="Productos" className="w-full min-w-[620px]">
+            <div role="rowgroup">
+              <div role="row" className={`${ADMIN_GRID_HEAD} ${PRODUCT_GRID}`}>
+                <div role="columnheader" className={ADMIN_CELL_HEAD}>
+                  Producto
+                </div>
+                <div role="columnheader" className={`${ADMIN_CELL_HEAD} hidden xl:block`}>
+                  Categoría
+                </div>
+                <div role="columnheader" className={`${ADMIN_CELL_HEAD} text-right`}>
+                  Precio
+                </div>
+                <div role="columnheader" className={`${ADMIN_CELL_HEAD} hidden text-right sm:block`}>
+                  Stock
+                </div>
+                <div role="columnheader" className={`${ADMIN_CELL_HEAD} text-center`}>
+                  Estado
+                </div>
+                <div role="columnheader" className={`${ADMIN_CELL_HEAD} text-right`}>
+                  Acciones
+                </div>
+              </div>
+            </div>
+            <div role="rowgroup">
               {filtered.map((product) => {
                 const busy = busyId === product.id;
                 return (
-                  <tr key={product.id} className={ADMIN_ROW}>
-                    <td className="py-4 pl-0 pr-4">
+                  <div key={product.id} role="row" className={`${ADMIN_GRID_ROW} ${PRODUCT_GRID}`}>
+                    <div role="cell" className="min-w-0 py-4">
                       <div className="flex items-center gap-3">
                         <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden bg-[var(--admin-surface)]">
                           {product.image_url ? (
@@ -241,23 +265,29 @@ export default function ProductosPage() {
                         </div>
                         <div className="min-w-0">
                           <p className="truncate text-sm leading-5 text-[var(--admin-ink)]">{product.name}</p>
-                          <p className="mt-0.5 truncate text-[11px] leading-4 text-[var(--admin-muted)] md:hidden">
+                          <p className="mt-0.5 truncate text-[11px] leading-4 text-[var(--admin-muted)] xl:hidden">
                             {categoryName(product.category_id)}
                             <span className="sm:hidden"> · Stock {product.stock}</span>
                           </p>
                         </div>
                       </div>
-                    </td>
-                    <td className="hidden py-4 pr-4 text-[13px] text-[var(--admin-muted)] md:table-cell">
+                    </div>
+                    <div
+                      role="cell"
+                      className="hidden truncate py-4 text-[13px] text-[var(--admin-muted)] xl:block"
+                    >
                       {categoryName(product.category_id)}
-                    </td>
-                    <td className="py-4 pr-4 text-right text-[13px] tabular-nums text-[var(--admin-ink)]">
+                    </div>
+                    <div role="cell" className="py-4 text-right text-[13px] tabular-nums text-[var(--admin-ink)]">
                       {formatARS(product.unit_price)}
-                    </td>
-                    <td className="hidden py-4 pr-4 text-right text-[13px] tabular-nums text-[var(--admin-muted)] sm:table-cell">
+                    </div>
+                    <div
+                      role="cell"
+                      className="hidden py-4 text-right text-[13px] tabular-nums text-[var(--admin-muted)] sm:block"
+                    >
                       {product.stock}
-                    </td>
-                    <td className="px-4 py-4 text-center">
+                    </div>
+                    <div role="cell" className="py-4 text-center">
                       <button
                         type="button"
                         onClick={() => void toggleActive(product)}
@@ -275,37 +305,35 @@ export default function ProductosPage() {
                         />
                         {product.active ? "Activo" : "Pausado"}
                       </button>
-                    </td>
-                    <td className="py-4 pl-4 pr-0">
-                      <div className="flex items-center justify-end gap-1">
-                        <button
-                          type="button"
-                          onClick={() => setEditing(product)}
-                          className={ADMIN_ICON_BUTTON}
-                          aria-label={`Editar ${product.name}`}
-                        >
-                          <Pencil size={15} strokeWidth={1.5} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setToDelete(product)}
-                          disabled={busy}
-                          className={`${ADMIN_ICON_BUTTON} hover:text-[var(--admin-danger)]`}
-                          aria-label={`Eliminar ${product.name}`}
-                        >
-                          {busy ? (
-                            <Loader2 size={15} strokeWidth={1.5} className="animate-spin" />
-                          ) : (
-                            <Trash2 size={15} strokeWidth={1.5} />
-                          )}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                    </div>
+                    <div role="cell" className="flex items-center justify-end gap-1 py-4">
+                      <button
+                        type="button"
+                        onClick={() => setEditing(product)}
+                        className={ADMIN_ICON_BUTTON}
+                        aria-label={`Editar ${product.name}`}
+                      >
+                        <Pencil size={15} strokeWidth={1.5} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setToDelete(product)}
+                        disabled={busy}
+                        className={`${ADMIN_ICON_BUTTON} hover:text-[var(--admin-danger)]`}
+                        aria-label={`Eliminar ${product.name}`}
+                      >
+                        {busy ? (
+                          <Loader2 size={15} strokeWidth={1.5} className="animate-spin" />
+                        ) : (
+                          <Trash2 size={15} strokeWidth={1.5} />
+                        )}
+                      </button>
+                    </div>
+                  </div>
                 );
               })}
-            </tbody>
-          </table>
+            </div>
+          </div>
         </div>
       )}
 
