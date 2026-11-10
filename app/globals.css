@@ -111,6 +111,22 @@ body {
   --admin-muted: #6e6e6e;
   --admin-line: #e5e5e5;
   --admin-display-font: var(--store-font-heading, var(--font-geist-sans), Arial, Helvetica, sans-serif);
+
+  /*
+   * Reparto de columnas de las tablas de Aura (boutique).
+   *
+   * Solo el tema editorial usa proporciones `fr` puras: el espacio se reparte
+   * parejo entre todos los tracks y ningún dato queda amontonado contra el
+   * borde. Los tenants retail conservan sus tracks utilitarios.
+   *
+   * Acciones necesita ~244 px para alojar sus cuatro controles, por eso es el
+   * único track con `minmax()`; el resto es fraccional.
+   */
+  --admin-cols-products: 3fr 1fr 1fr 1fr;
+  --admin-cols-products-sm: 3fr 1.2fr 1fr 1fr 1fr;
+  --admin-cols-products-xl: 3fr 2fr 1fr 1fr 1fr 1fr;
+  --admin-cols-stock: 4fr 2fr 2fr 1fr;
+  --admin-cols-orders: 1.3fr 0.85fr 1.35fr 1.35fr 1.15fr 1.15fr minmax(244px, 1.4fr);
 }
 
 html.dark [data-admin] {

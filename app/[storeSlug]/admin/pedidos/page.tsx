@@ -64,12 +64,13 @@ const PAGE_SIZE = 10;
 
 /**
  * Una sola plantilla para cabecera, fila principal y fila expandida.
- * Total (5) y Estado (6) tienen tracks fijos y se centran: dejan de chocar
- * entre sí. Acciones (7) se ancla a la derecha. El subtotal de cada ítem usa
- * el track de Total, por lo que queda en la misma vertical.
+ * Aura (tema editorial) reparte con `fr` proporcionales: Entrega queda cerca
+ * del centro y Total, Estado y Acciones respiran en tracks propios. Acciones
+ * conserva un mínimo porque aloja cuatro controles. El fallback mantiene el
+ * reparto utilitario del resto de los tenants.
  */
 const ORDER_TABLE =
-  "w-full min-w-[900px] [--admin-table-cols:104px_62px_minmax(0,1fr)_minmax(0,1fr)_108px_108px_236px] [--admin-grid-gap:0.75rem]";
+  "w-full min-w-[900px] [--admin-table-cols:var(--admin-cols-orders,104px_62px_minmax(0,1fr)_minmax(0,1fr)_108px_108px_236px)] [--admin-grid-gap:0.75rem]";
 
 const MINI_PRIMARY =
   "inline-flex items-center gap-1.5 whitespace-nowrap rounded-md bg-[var(--admin-accent)] px-2.5 py-1.5 text-[10px] font-medium uppercase leading-none tracking-[0.1em] text-[var(--admin-on-accent)] transition-colors duration-200 hover:bg-[var(--admin-accent-hover)] disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none";
@@ -458,36 +459,36 @@ export default function PedidosPage() {
                     {open && (
                       <div
                         role="row"
-                        className="border-b border-[var(--admin-line)] bg-black/[0.045] dark:bg-black/25"
+                        className="border-b border-[var(--admin-line)] bg-black/[0.045] dark:bg-white/[0.035]"
                       >
                         <div role="cell" className="py-4">
                           {(order.notes || order.delivery_address || order.payment_method) && (
-                            <div className="mb-1 flex flex-wrap items-baseline gap-x-8 gap-y-2 border-b border-[var(--admin-line)] pb-3">
+                            <dl className="mb-3 flex flex-wrap items-baseline gap-x-10 gap-y-2 border-b border-[var(--admin-line)] pb-3">
                               {order.delivery_address && (
-                                <p className="flex items-baseline gap-2">
-                                  <span className={ADMIN_EYEBROW}>Dirección</span>
-                                  <span className="text-[12px] leading-5 text-[var(--admin-ink)]">
+                                <div className="flex items-baseline gap-3">
+                                  <dt className={`${ADMIN_EYEBROW} w-20 shrink-0`}>Dirección</dt>
+                                  <dd className="text-[12px] leading-5 text-[var(--admin-ink)]">
                                     {order.delivery_address}
-                                  </span>
-                                </p>
+                                  </dd>
+                                </div>
                               )}
                               {order.payment_method && (
-                                <p className="flex items-baseline gap-2">
-                                  <span className={ADMIN_EYEBROW}>Pago</span>
-                                  <span className="text-[12px] leading-5 text-[var(--admin-ink)]">
+                                <div className="flex items-baseline gap-3">
+                                  <dt className={`${ADMIN_EYEBROW} w-20 shrink-0`}>Pago</dt>
+                                  <dd className="text-[12px] leading-5 text-[var(--admin-ink)]">
                                     {order.payment_method}
-                                  </span>
-                                </p>
+                                  </dd>
+                                </div>
                               )}
                               {order.notes && (
-                                <p className="flex items-baseline gap-2">
-                                  <span className={ADMIN_EYEBROW}>Notas</span>
-                                  <span className="text-[12px] leading-5 text-[var(--admin-ink)]">
+                                <div className="flex min-w-0 items-baseline gap-3">
+                                  <dt className={`${ADMIN_EYEBROW} w-20 shrink-0`}>Notas</dt>
+                                  <dd className="min-w-0 text-[12px] leading-5 text-[var(--admin-ink)]">
                                     {order.notes}
-                                  </span>
-                                </p>
+                                  </dd>
+                                </div>
                               )}
-                            </div>
+                            </dl>
                           )}
                           <div className="divide-y divide-[var(--admin-line)]">
                             {order.items.map((item, index) => {
@@ -533,7 +534,7 @@ export default function PedidosPage() {
                                       )}
                                     </div>
                                   </div>
-                                  <div className="col-start-4 flex flex-col items-end leading-4">
+                                  <div className="col-start-4 flex flex-col items-end gap-0.5 whitespace-nowrap leading-4">
                                     <span className="text-[12px] tabular-nums text-[var(--admin-ink)]">
                                       {item.quantity} un.
                                     </span>
@@ -552,6 +553,7 @@ export default function PedidosPage() {
                         </div>
                       </div>
                     )}
+
                   </Fragment>
                 );
               })}

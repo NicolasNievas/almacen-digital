@@ -14,13 +14,13 @@ const LOW_STOCK = 5;
 
 /**
  * Una sola plantilla en el wrapper de la tabla: cabecera y filas la heredan.
- * Producto ya no absorbe todo el sobrante (`1fr` puro): comparte ancho con
- * Stock y Precio, así el stepper y el importe quedan cerca del nombre en vez
- * de quedar clavados al borde derecho. El stepper cierra su track y el precio
- * arranca al inicio del siguiente: entre ambos solo hay gap.
+ * Aura (tema editorial) usa `4fr 2fr 2fr 1fr`: Producto se lleva el espacio
+ * real que necesita y Stock/Precio quedan centrados en tracks propios, sin
+ * acumular todo el aire en una sola columna. El fallback mantiene el reparto
+ * utilitario del resto de los tenants.
  */
 const STOCK_TABLE =
-  "w-full min-w-[720px] [--admin-table-cols:minmax(0,1.3fr)_minmax(136px,0.9fr)_minmax(150px,1fr)_96px]";
+  "w-full min-w-[720px] [--admin-table-cols:var(--admin-cols-stock,minmax(0,1.3fr)_minmax(136px,0.9fr)_minmax(150px,1fr)_96px)]";
 
 type Props = {
   initial: Product[];
@@ -75,10 +75,10 @@ export default function StockPanel({ initial, onSave }: Props) {
               <div role="columnheader" className={ADMIN_CELL_HEAD}>
                 Producto
               </div>
-              <div role="columnheader" className={`${ADMIN_CELL_HEAD} text-right`}>
+              <div role="columnheader" className={`${ADMIN_CELL_HEAD} text-center`}>
                 Stock
               </div>
-              <div role="columnheader" className={ADMIN_CELL_HEAD}>
+              <div role="columnheader" className={`${ADMIN_CELL_HEAD} text-center`}>
                 Precio unitario
               </div>
               <div role="columnheader" className={`${ADMIN_CELL_HEAD} text-right`}>
@@ -102,7 +102,7 @@ export default function StockPanel({ initial, onSave }: Props) {
                       )}
                     </div>
                   </div>
-                  <div role="cell" className="flex justify-end py-3">
+                  <div role="cell" className="flex justify-center py-3">
                     <div className="inline-flex items-center border-b border-[var(--admin-line)]">
                       <button
                         type="button"
@@ -132,13 +132,13 @@ export default function StockPanel({ initial, onSave }: Props) {
                       </button>
                     </div>
                   </div>
-                  <div role="cell" className="py-3">
-                    <div className="flex flex-col gap-0.5">
+                  <div role="cell" className="flex justify-center py-3">
+                    <div className="flex flex-col items-center gap-0.5">
                       <input
                         type="number"
                         min={0}
                         aria-label={`Precio de ${p.name}`}
-                        className="w-28 appearance-none border-0 border-b border-[var(--admin-line)] bg-transparent py-1 text-[13px] tabular-nums text-[var(--admin-ink)] outline-none transition-colors focus:border-[var(--admin-ink)] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                        className="w-28 appearance-none border-0 border-b border-[var(--admin-line)] bg-transparent py-1 text-center text-[13px] tabular-nums text-[var(--admin-ink)] outline-none transition-colors focus:border-[var(--admin-ink)] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                         defaultValue={p.unit_price}
                         onBlur={(e) =>
                           Number(e.target.value) !== p.unit_price &&

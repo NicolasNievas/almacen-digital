@@ -42,9 +42,13 @@ import type { Category, Product } from "@/lib/types";
  * base → Producto · Precio · Estado · Acciones
  * sm   → + Stock
  * xl   → + Categoría
+ *
+ * El primer argumento de `var()` es el reparto de Aura (tema editorial), con
+ * tracks `fr` parejos; el fallback conserva el reparto utilitario del resto
+ * de los tenants.
  */
 const PRODUCT_TABLE =
-  "w-full min-w-[620px] [--admin-table-cols:minmax(0,1fr)_104px_88px_88px] sm:[--admin-table-cols:minmax(0,1fr)_110px_76px_88px_88px] xl:[--admin-table-cols:minmax(0,1.1fr)_minmax(0,1fr)_112px_80px_96px_88px]";
+  "w-full min-w-[620px] [--admin-table-cols:var(--admin-cols-products,minmax(0,1fr)_104px_88px_88px)] sm:[--admin-table-cols:var(--admin-cols-products-sm,minmax(0,1fr)_110px_76px_88px_88px)] xl:[--admin-table-cols:var(--admin-cols-products-xl,minmax(0,1.1fr)_minmax(0,1fr)_112px_80px_96px_88px)]";
 
 export default function ProductosPage() {
   const configured = isSupabaseConfigured();
@@ -235,7 +239,7 @@ export default function ProductosPage() {
                 <div role="columnheader" className={`${ADMIN_CELL_HEAD} text-right`}>
                   Precio
                 </div>
-                <div role="columnheader" className={`${ADMIN_CELL_HEAD} hidden text-right sm:block`}>
+                <div role="columnheader" className={`${ADMIN_CELL_HEAD} hidden text-center sm:block`}>
                   Stock
                 </div>
                 <div role="columnheader" className={`${ADMIN_CELL_HEAD} text-center`}>
@@ -285,7 +289,7 @@ export default function ProductosPage() {
                     </div>
                     <div
                       role="cell"
-                      className="hidden py-4 text-right text-[13px] tabular-nums text-[var(--admin-muted)] sm:block"
+                      className="hidden py-4 text-center text-[13px] tabular-nums text-[var(--admin-muted)] sm:block"
                     >
                       {product.stock}
                     </div>
